@@ -1,7 +1,7 @@
 const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
-const {personalRouter} = require('../modules/controller/routes'); 
+const {personalRouter, instrumentoRouter, promocionRouter} = require('../modules/controller/routes'); 
 
 const app = express();
 
@@ -15,5 +15,7 @@ app.get('/', (req, rest)=>{
 
 //http://localhost:3000
 app.use('/api/personal', personalRouter);
+app.use('/api/instrumento', instrumentoRouter);
+app.use('/api/promocion', promocionRouter);
 module.exports = {app};
 

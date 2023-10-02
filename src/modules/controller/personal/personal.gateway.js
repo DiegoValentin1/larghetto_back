@@ -7,14 +7,25 @@ const findAll = async()=>{
 }
 
 const findAllStudent = async()=>{
-    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
-    FROM personal pe join users us on us.personal_id=pe.id WHERE us.role='ALUMNO'`;
+    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro
+    FROM personal pe 
+    join users us on us.personal_id=pe.id 
+    join alumno al on al.user_id=us.id
+    join instrumento ins on ins.id=instrumento_id
+    join users maestro on al.maestro_id=maestro.id
+    join personal personal_maestro on maestro.personal_id=personal_maestro.id
+    WHERE us.role='ALUMNO'`;
     return await query(sql, []);
 }
 
 const findAllTeacher = async()=>{
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
     FROM personal pe join users us on us.personal_id=pe.id WHERE us.role='MAESTRO'`;
+    return await query(sql, []);
+}
+
+const findAllInstrumento = async()=>{
+    const sql = `SELECT * FROM instrumento`;
     return await query(sql, []);
 }
 
@@ -71,4 +82,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAll, findById, save, update, remove, findAllAdmin};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento /*, save, update, remove, findAllAdmin*/};
