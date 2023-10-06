@@ -28,9 +28,9 @@ const getAllPromocion = async(req, res=Response)=>{
 
 const insert = async(req, res=Response)=>{
     try {
-        const {promocion} = req.body;
+        const {promocion, descuento} = req.body;
         console.log(promocion);
-        const promocionObj = await save({promocion});
+        const promocionObj = await save({promocion, descuento});
         res.status(200).json(promocionObj);
     } catch (error) {
         console.log(error);
@@ -41,9 +41,10 @@ const insert = async(req, res=Response)=>{
 
 const actualize = async (req, res = Response) => {
     try {
-       const { promocion, id } = req.body;
+       const { promocion, id, descuento } = req.body;
        const promocionObj = await update({
           promocion,
+          descuento,
           id
        })
        res.status(200).json(promocionObj);

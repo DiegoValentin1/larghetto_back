@@ -20,8 +20,11 @@ const findAllStudent = async()=>{
 }
 
 const findAllTeacher = async()=>{
-    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
-    FROM personal pe join users us on us.personal_id=pe.id WHERE us.role='MAESTRO'`;
+    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
+    FROM personal pe 
+    join users us on us.personal_id=pe.id
+    join maestro mae on mae.user_id=us.id
+    WHERE us.role='MAESTRO'`;
     return await query(sql, []);
 }
 
@@ -59,6 +62,26 @@ const updateStudent = async (person) => {
     return{ ...person }
 };
 
+const saveTeacher = async(person)=>{
+    console.log(person);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco)  throw Error("Missing fields");
+    const sql = `CALL InsertarMaestro(?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco]);
+
+    return {...person, id:insertedId}
+}
+
+const updateTeacher = async (person) => {
+    //Con esto se valida que id  sea un numero
+    if (Number.isNaN(person.id)) throw Error("Wrong Type");
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    if (!person.id) throw Error("Missing Fields");
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco)  throw Error("Missing fields");
+    const sql = `CALL ActualizarMaestro(?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.id,person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco]);
+    return{ ...person }
+};
+
 const remove = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type"); 
     if (!id) throw Error('Missing Fields');
@@ -68,4 +91,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove,/* findAllAdmin*/};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher};

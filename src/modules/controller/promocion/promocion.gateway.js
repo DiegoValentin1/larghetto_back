@@ -7,8 +7,8 @@ const findAllPromocion = async()=>{
 
 const save = async(promocion)=>{
     if(!promocion.promocion) throw Error("Missing fields");
-    const sql = `INSERT INTO promocion(promocion) VALUES(?)`;
-    const {insertedId} = await query(sql, [promocion.promocion]);
+    const sql = `INSERT INTO promocion(promocion, descuento) VALUES(?,?)`;
+    const {insertedId} = await query(sql, [promocion.promocion, promocion.descuento]);
 
     return {...promocion, id:insertedId}
 }
@@ -22,10 +22,11 @@ const update = async (promocion) => {
         !promocion.promocion
     ) throw Error("Missing Fields");
 
-    const sql = `UPDATE promocion SET promocion=? WHERE id=?;`;
+    const sql = `UPDATE promocion SET promocion=?, descuento=? WHERE id=?;`;
 
     await query(sql, [
         promocion.promocion,
+        promocion.descuento,
         promocion.id,
     ]);
     return{ ...promocion }
