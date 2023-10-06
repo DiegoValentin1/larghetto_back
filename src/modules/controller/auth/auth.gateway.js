@@ -5,7 +5,7 @@ const { validatePassword, hashPassword } = require("../../../utils/functions");
 const login = async (user) => {
     const { email, password } = user;
     if (!email || !password) throw Error('Missing fields');
-    const sql = `SELECT * FROM users join personal on users.personal_id = personal.id WHERE email=? AND status=1`;
+    const sql = `SELECT * FROM users join personal on users.personal_id = personal.id WHERE email=? AND users.status=1`;
     const existUser = await query(sql, [email]);
     console.log(existUser);
     if (

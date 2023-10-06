@@ -1,8 +1,21 @@
+const { hashPassword } = require('../../../utils/functions');
 const {query} = require('../../../utils/mysql');
 
 const findAll = async()=>{
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
     FROM personal pe join users us on us.personal_id=pe.id`;
+    return await query(sql, []);
+}
+
+const findAllRecepcionista = async()=>{
+    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
+    FROM personal pe join users us on us.personal_id=pe.id WHERE us.role="RECEPCION"`;
+    return await query(sql, []);
+}
+
+const findAllEncargado = async()=>{
+    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
+    FROM personal pe join users us on us.personal_id=pe.id WHERE us.role="ENCARGADO"`;
     return await query(sql, []);
 }
 
@@ -51,6 +64,27 @@ const saveStudent = async(person)=>{
     return {...person, id:insertedId}
 }
 
+const saveUser = async(person)=>{
+    console.log(person);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.password)  throw Error("Missing fields");
+    const sql = `CALL InsertarUsuario(?,?,?,?,?,?,?,?,?)`;
+    const hashedPassword = await hashPassword(person.password);
+    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,hashedPassword,person.role]);
+
+    return {...person, id:insertedId}
+}
+
+const updateUser = async (person) => {
+    //Con esto se valida que id  sea un numero
+    if (Number.isNaN(person.id)) throw Error("Wrong Type");
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    if (!person.id) throw Error("Missing Fields");
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role)  throw Error("Missing fields");
+    const sql = `CALL ActualizarUser(?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.id,person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role]);
+    return{ ...person }
+};
+
 const updateStudent = async (person) => {
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
@@ -91,4 +125,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista};
