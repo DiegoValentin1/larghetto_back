@@ -20,7 +20,7 @@ const findAllEncargado = async()=>{
 }
 
 const findAllStudent = async()=>{
-    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro, promo.promocion
+    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro, promo.*
     FROM personal pe 
     join users us on us.personal_id=pe.id 
     join alumno al on al.user_id=us.id
@@ -57,9 +57,9 @@ const findById = async(id)=>{
 
 const saveStudent = async(person)=>{
     console.log(person);
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion)  throw Error("Missing fields");
-    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion]);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion || !person.observaciones)  throw Error("Missing fields");
+    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones]);
 
     return {...person, id:insertedId}
 }
@@ -90,29 +90,30 @@ const updateStudent = async (person) => {
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion)  throw Error("Missing fields");
-    const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0,10),person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion]);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion || !person.observaciones)  throw Error("Missing fields");
+    const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0,10),person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones]);
     return{ ...person }
 };
 
 const saveTeacher = async(person)=>{
     console.log(person);
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco)  throw Error("Missing fields");
-    const sql = `CALL InsertarMaestro(?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco]);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco || !person.fecha_inicio)  throw Error("Missing fields");
+    const sql = `CALL InsertarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco, person.fecha_inicio, person.comprobante]);
 
     return {...person, id:insertedId}
 }
 
 const updateTeacher = async (person) => {
     //Con esto se valida que id  sea un numero
+    console.log(person)
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco)  throw Error("Missing fields");
-    const sql = `CALL ActualizarMaestro(?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.id,person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco]);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.fecha_inicio || !person.banco)  throw Error("Missing fields");
+    const sql = `CALL ActualizarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [person.id,person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco, person.fecha_inicio, person.comprobante]);
     return{ ...person }
 };
 
