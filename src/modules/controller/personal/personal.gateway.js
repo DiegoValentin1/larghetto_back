@@ -20,7 +20,7 @@ const findAllEncargado = async()=>{
 }
 
 const findAllStudent = async()=>{
-    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro, promo.*
+    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro, promo.promocion, promo.descuento
     FROM personal pe 
     join users us on us.personal_id=pe.id 
     join alumno al on al.user_id=us.id
@@ -29,6 +29,16 @@ const findAllStudent = async()=>{
     join personal personal_maestro on maestro.personal_id=personal_maestro.id
     join promocion promo on promo.id=al.promocion_id
     WHERE us.role='ALUMNO'`;
+    return await query(sql, []);
+}
+
+const findAllStudentAsistencias = async(id)=>{
+    const sql = `SELECT * FROM alumno_asistencias WHERE id_alumno=?`;
+    return await query(sql, [id]);
+}
+
+const activeStudents = async()=>{
+    const sql = `SELECT count(id) as alumnosActivos from users where role='ALUMNO' AND status=1`;
     return await query(sql, []);
 }
 
@@ -96,6 +106,15 @@ const updateStudent = async (person) => {
     return{ ...person }
 };
 
+const updateStudentAsistencias = async (person) => {
+    console.log(person);
+    if (Number.isNaN(person.id_alumno)) throw Error("Wrong Type");
+    if (!person.id_alumno) throw Error("Missing Fields");
+    const sql = `UPDATE alumno_asistencias SET dia1=?, dia2=?, dia3=?, dia4=?, dia5=? WHERE id_alumno=?`;
+    const {insertedId} = await query(sql, [person.dia1, person.dia2, person.dia3,person.dia4,person.dia5, person.id_alumno]);
+    return{ ...person }
+};
+
 const saveTeacher = async(person)=>{
     console.log(person);
     if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco || !person.fecha_inicio)  throw Error("Missing fields");
@@ -117,13 +136,15 @@ const updateTeacher = async (person) => {
     return{ ...person }
 };
 
-const remove = async(id)=>{
+const remove = async(id, autor, accion)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type"); 
     if (!id) throw Error('Missing Fields');
     const sql = `UPDATE users SET status=IF(status = true, false, true) WHERE id=?`;
+    const sqlLog = `INSERT INTO logs (fecha, autor, accion) VALUES (CURRENT_TIMESTAMP, ?, ?)`;
+    await query(sqlLog,[autor, accion]);
     await query(sql,[id]);
 
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias};

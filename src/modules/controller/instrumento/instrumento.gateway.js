@@ -5,6 +5,11 @@ const findAllInstrumento = async()=>{
     return await query(sql, []);
 }
 
+const findLastestLogs = async()=>{
+    const sql = `SELECT * FROM logs ORDER BY id DESC LIMIT 4`;
+    return await query(sql, []);
+}
+
 const findById = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if(!id)throw Error("Missing fields");
@@ -49,4 +54,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove /*, findAllAdmin*/};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs /*, findAllAdmin*/};
