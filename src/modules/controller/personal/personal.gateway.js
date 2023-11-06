@@ -20,13 +20,10 @@ const findAllEncargado = async()=>{
 }
 
 const findAllStudent = async()=>{
-    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, ins.instrumento, personal_maestro.name as maestro, promo.promocion, promo.descuento
+    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, promo.promocion, promo.descuento, al.id as alu_id
     FROM personal pe 
     join users us on us.personal_id=pe.id 
     join alumno al on al.user_id=us.id
-    join instrumento ins on ins.id=instrumento_id
-    join users maestro on al.maestro_id=maestro.id
-    join personal personal_maestro on maestro.personal_id=personal_maestro.id
     join promocion promo on promo.id=al.promocion_id
     WHERE us.role='ALUMNO'`;
     return await query(sql, []);
@@ -56,6 +53,8 @@ const findAllInstrumento = async()=>{
     return await query(sql, []);
 }
 
+
+
 const findById = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if(!id)throw Error("Missing fields");
@@ -67,11 +66,32 @@ const findById = async(id)=>{
 
 const saveStudent = async(person)=>{
     console.log(person);
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion || !person.observaciones)  throw Error("Missing fields");
-    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones]);
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.observaciones || !person.clases)  throw Error("Missing fields");
+    const nombres = person.name.toUpperCase().split(" ");
+    var matricula
+    if (nombres.length == 1) {
+        matricula = `L${nombres[0].substring(0,2)}${person.fechaNacimiento.substring(2,4)}${person.fechaNacimiento.substring(5,7)}`;
+    } else if (nombres.length == 2) {
+        matricula = `L${nombres[1].substring(0,2)}${person.fechaNacimiento.substring(2,4)}${person.fechaNacimiento.substring(5,7)}`;
+    } else if(nombres.length == 3){
+        matricula = `L${nombres[1].substring(0,1)}${nombres[2].substring(0,1)}${person.fechaNacimiento.substring(2,4)}${person.fechaNacimiento.substring(5,7)}`;
+    } else if(nombres.length == 4){
+        matricula = `L${nombres[2].substring(0,1)}${nombres[3].substring(0,1)}${person.fechaNacimiento.substring(2,4)}${person.fechaNacimiento.substring(5,7)}`;
+    } else if(nombres.length > 4){
+        matricula = `L${nombres[2].substring(0,1)}${nombres[nombres.length-1].substring(0,1)}${person.fechaNacimiento.substring(2,4)}${person.fechaNacimiento.substring(5,7)}`;
+    }
 
-    return {...person, id:insertedId}
+    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const respuesta = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones, matricula]);
+
+    console.log(respuesta);
+
+    await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [respuesta[0][0].usuarioInsertado])
+    await person.clases.forEach(async(element) => {
+        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [respuesta[0][0].usuarioInsertado, element.maestro, element.instrumento, element.dia, element.hora])
+    });
+
+    return {...person}
 }
 
 const saveUser = async(person)=>{
@@ -96,11 +116,16 @@ const updateUser = async (person) => {
 };
 
 const updateStudent = async (person) => {
+    console.log(person);
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
-    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.instrumento || !person.maestro || !person.hora || !person.dia || !person.promocion || !person.observaciones)  throw Error("Missing fields");
+    if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.observaciones || !person.clases || !person.user_id)  throw Error("Missing fields");
+    await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
+    await person.clases.forEach(async(element) => {
+        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
+    });
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const {insertedId} = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0,10),person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones]);
     return{ ...person }
@@ -147,4 +172,13 @@ const remove = async(id, autor, accion)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias};
+const removeStudent = async(id, estado)=>{
+    if (Number.isNaN(id)) throw Error("Wrong Type"); 
+    if (!id) throw Error('Missing Fields');
+    const sql = `UPDATE alumno SET estado=? WHERE id=?`;
+    await query(sql,[estado,id]);
+
+    return{ idDeleted:id };
+}
+
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent};

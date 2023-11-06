@@ -5,6 +5,12 @@ const findAllInstrumento = async()=>{
     return await query(sql, []);
 }
 
+const findAllInstrumentoMaestro = async()=>{
+    const sql = `SELECT *, ins.instrumento FROM maestro_instrumento mi
+    join instrumento ins on mi.instrumento_id=ins.id`;
+    return await query(sql, []);
+}
+
 const findLastestLogs = async()=>{
     const sql = `SELECT * FROM logs ORDER BY id DESC LIMIT 4`;
     return await query(sql, []);
@@ -13,8 +19,7 @@ const findLastestLogs = async()=>{
 const findById = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if(!id)throw Error("Missing fields");
-    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
-    FROM personal pe join users us on us.personal_id=pe.id WHERE user_id=?`;
+    const sql = `SELECT * FROM alumno_clases WHERE id_alumno=?`;
 
     return await query(sql, [id]);
 }
@@ -54,4 +59,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove, findLastestLogs /*, findAllAdmin*/};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro /*, findAllAdmin*/};

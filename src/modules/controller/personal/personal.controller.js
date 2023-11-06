@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent} = require('./personal.gateway');
 
 // const getAll = async(req, res=Response)=>{
 //     try {
@@ -107,8 +107,8 @@ const getAllInstrumento = async(req, res=Response)=>{
 const insertStudent = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,instrumento,maestro,hora,dia,promocion, observaciones} = req.body;
-        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,instrumento,maestro,hora,dia,promocion, observaciones});
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases} = req.body;
+        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases});
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -118,9 +118,10 @@ const insertStudent = async(req, res=Response)=>{
 }
 
 const actualizeStudent = async (req, res = Response) => {
+    console.log(req.body)
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,instrumento,maestro,hora,dia,promocion, observaciones} = req.body;
-       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,instrumento,maestro,hora,dia,promocion, observaciones})
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id} = req.body;
+       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -209,6 +210,18 @@ const actualizeTeacher = async (req, res = Response) => {
     }
  }
 
+ const eliminateStudent = async (req, res = Response) => {
+    try {
+       const{ id, estado } =req.body;
+       const person = await removeStudent(id, estado);
+       res.status(200).json(person);
+    } catch (error) {
+       console.log(error);
+       const message = validateError(error);
+       res.status(400).json({ message });
+    }
+ }
+
 const personalRouter = Router();
 
 personalRouter.get('/', getAllStudent);
@@ -228,5 +241,6 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.post('/', insert);
 // personalRouter.put('/', actualize);
 personalRouter.delete('/',eliminate);
+personalRouter.delete('/alumno/',eliminateStudent);
 
 module.exports = {personalRouter, };

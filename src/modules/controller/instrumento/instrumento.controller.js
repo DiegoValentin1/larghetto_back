@@ -1,11 +1,22 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllInstrumento, save, update, remove, findLastestLogs} = require('./instrumento.gateway');
+const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro} = require('./instrumento.gateway');
 
 const getAllInstrumento = async(req, res=Response)=>{
     try {
         const personal = await findAllInstrumento();
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllInstrumentoMaestro = async(req, res=Response)=>{
+    try {
+        const personal = await findAllInstrumentoMaestro();
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -25,17 +36,17 @@ const getLastestLogs = async(req, res=Response)=>{
     }
 }
 
-// const getById = async(req, res=Response)=>{
-//     try {
-//         const {id} = req.params;
-//         const person = await findById(id);
-//         res.status(200).json(person);
-//     } catch (error) {
-//         console.log(error);
-//         const message = validateError(error);
-//         res.status(400).json({message});
-//     }
-// }
+const getById = async(req, res=Response)=>{
+    try {
+        const {id} = req.params;
+        const person = await findById(id);
+        res.status(200).json(person);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
 
 const insert = async(req, res=Response)=>{
     try {
@@ -81,8 +92,9 @@ const actualize = async (req, res = Response) => {
 const instrumentoRouter = Router();
 
 instrumentoRouter.get('/', getAllInstrumento);
+instrumentoRouter.get('/teacher', getAllInstrumentoMaestro);
 instrumentoRouter.get('/lastest', getLastestLogs);
-// instrumentoRouter.get('/:id',[auth, checkRoles(['ADMIN'])], getById);
+instrumentoRouter.get('/:id', getById);
 instrumentoRouter.post('/', insert);
 instrumentoRouter.put('/', actualize);
 instrumentoRouter.delete('/:id',eliminate);
