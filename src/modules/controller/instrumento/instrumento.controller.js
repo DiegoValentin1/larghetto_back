@@ -1,11 +1,21 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro} = require('./instrumento.gateway');
+const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2} = require('./instrumento.gateway');
 
 const getAllInstrumento = async(req, res=Response)=>{
     try {
         const personal = await findAllInstrumento();
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+const getAllInstrumento2 = async(req, res=Response)=>{
+    try {
+        const personal = await findAllInstrumento2();
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -92,6 +102,7 @@ const actualize = async (req, res = Response) => {
 const instrumentoRouter = Router();
 
 instrumentoRouter.get('/', getAllInstrumento);
+instrumentoRouter.get('/dos', getAllInstrumento2);
 instrumentoRouter.get('/teacher', getAllInstrumentoMaestro);
 instrumentoRouter.get('/lastest', getLastestLogs);
 instrumentoRouter.get('/:id', getById);

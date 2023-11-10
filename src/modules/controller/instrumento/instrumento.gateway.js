@@ -5,6 +5,11 @@ const findAllInstrumento = async()=>{
     return await query(sql, []);
 }
 
+const findAllInstrumento2 = async()=>{
+    const sql = `SELECT *, instrumento.id as instrumento_id FROM instrumento`;
+    return await query(sql, []);
+}
+
 const findAllInstrumentoMaestro = async()=>{
     const sql = `SELECT *, ins.instrumento FROM maestro_instrumento mi
     join instrumento ins on mi.instrumento_id=ins.id`;
@@ -59,4 +64,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro /*, findAllAdmin*/};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2 /*, findAllAdmin*/};

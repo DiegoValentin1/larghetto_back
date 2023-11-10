@@ -34,6 +34,14 @@ const findAllStudentAsistencias = async(id)=>{
     return await query(sql, [id]);
 }
 
+const findAllStudentClases = async(id)=>{
+    const sql = `SELECT ac.*, ins.instrumento, pe.name FROM alumno_clases ac
+    join users us on us.id=ac.id_maestro
+    join personal pe on pe.id=us.personal_id
+    join instrumento ins on ins.id=ac.id_instrumento WHERE ac.id_alumno=?`;
+    return await query(sql, [id]);
+}
+
 const activeStudents = async()=>{
     const sql = `SELECT count(id) as alumnosActivos from users where role='ALUMNO' AND status=1`;
     return await query(sql, []);
@@ -144,9 +152,14 @@ const saveTeacher = async(person)=>{
     console.log(person);
     if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco || !person.fecha_inicio)  throw Error("Missing fields");
     const sql = `CALL InsertarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco, person.fecha_inicio, person.comprobante]);
+    const respuesta = await query(sql, [person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco, person.fecha_inicio, person.comprobante]);
 
-    return {...person, id:insertedId}
+    await query(`DELETE FROM maestro_instrumento WHERE maestro_id=?`, [respuesta[0][0].usuarioInsertado])
+    await person.maestroInstrumentos.forEach(async(element) => {
+        await query(`INSERT INTO maestro_instrumento (maestro_id, instrumento_id) values(?,?)`, [respuesta[0][0].usuarioInsertado, element.instrumento_id])
+    });
+
+    return {...person}
 }
 
 const updateTeacher = async (person) => {
@@ -156,6 +169,11 @@ const updateTeacher = async (person) => {
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
     if(!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.fecha_inicio || !person.banco)  throw Error("Missing fields");
+
+    await query(`DELETE FROM maestro_instrumento WHERE maestro_id=?`, [person.user_id])
+    await person.maestroInstrumentos.forEach(async(element) => {
+        await query(`INSERT INTO maestro_instrumento (maestro_id, instrumento_id) values(?,?)`, [person.user_id, element.instrumento_id])
+    });
     const sql = `CALL ActualizarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const {insertedId} = await query(sql, [person.id,person.name, person.fechaNacimiento,person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.clabe,person.cuenta,person.banco, person.fecha_inicio, person.comprobante]);
     return{ ...person }
@@ -181,4 +199,4 @@ const removeStudent = async(id, estado)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent, findAllStudentClases};

@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent, findAllStudentClases} = require('./personal.gateway');
 
 // const getAll = async(req, res=Response)=>{
 //     try {
@@ -29,6 +29,18 @@ const getAllStudentAsistencias = async(req, res=Response)=>{
     try {
         const {id_alumno} = req.body;
         const personal = await findAllStudentAsistencias(id_alumno);
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllStudentClases = async(req, res=Response)=>{
+    try {
+        const {id} = req.params;
+        const personal = await findAllStudentClases(id);
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -175,8 +187,8 @@ const actualizeUser = async (req, res = Response) => {
  const insertTeacher = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco, fecha_inicio, comprobante} = req.body;
-        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio });
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco, fecha_inicio, comprobante, maestroInstrumentos} = req.body;
+        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos });
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -187,8 +199,9 @@ const actualizeUser = async (req, res = Response) => {
 
 const actualizeTeacher = async (req, res = Response) => {
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio} = req.body;
-       const person = await updateTeacher({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio})
+        console.log(req.body);
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, user_id} = req.body;
+       const person = await updateTeacher({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, user_id})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -228,6 +241,7 @@ personalRouter.get('/', getAllStudent);
 personalRouter.get('/alumno/activos', getActiveStudents);
 personalRouter.post('/alumno/asistencias', getAllStudentAsistencias);
 personalRouter.get('/teacher/', getAllTeacher);
+personalRouter.get('/clases/:id', getAllStudentClases);
 personalRouter.get('/recepcionista/', getAllRecepcionista);
 personalRouter.get('/encargado/', getAllEncargado);
 personalRouter.post('/alumno/', insertStudent);
