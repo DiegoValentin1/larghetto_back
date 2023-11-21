@@ -7,6 +7,20 @@ const findAll = async()=>{
     return await query(sql, []);
 }
 
+const findAllStudentByMaestro = async(id)=>{
+    const sql = `SELECT pe.name FROM alumno_clases ac
+    JOIN users us on us.id=ac.id_alumno
+    JOIN personal pe on pe.id=us.personal_id WHERE ac.id_maestro=?`;
+    return await query(sql, [id]);
+}
+
+const findAllStatsByMaestro = async(id)=>{
+    const sql = `SELECT * FROM maestro_descuentos WHERE id_maestro=?`;
+    const sql2 = `SELECT * FROM maestro_repo WHERE id_maestro=?`;
+    const sql3 = `SELECT * FROM maestro_talleres WHERE id_maestro=?`;
+    return [await query(sql, [id]), await query(sql2, [id]), await query(sql3, [id])];
+}
+
 const findAllRecepcionista = async()=>{
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
     FROM personal pe join users us on us.personal_id=pe.id WHERE us.role="RECEPCION"`;
@@ -139,12 +153,12 @@ const updateStudent = async (person) => {
     return{ ...person }
 };
 
-const updateStudentAsistencias = async (person) => {
+const saveStudentAsistencias = async (person) => {
     console.log(person);
     if (Number.isNaN(person.id_alumno)) throw Error("Wrong Type");
-    if (!person.id_alumno) throw Error("Missing Fields");
-    const sql = `UPDATE alumno_asistencias SET dia1=?, dia2=?, dia3=?, dia4=?, dia5=? WHERE id_alumno=?`;
-    const {insertedId} = await query(sql, [person.dia1, person.dia2, person.dia3,person.dia4,person.dia5, person.id_alumno]);
+    if (!person.id_alumno || !person.fecha) throw Error("Missing Fields");
+    const sql = `INSERT INTO alumno_asistencias (id_alumno, fecha) VALUES (?,?)`;
+    const {insertedId} = await query(sql, [person.id_alumno, person.fecha]);
     return{ ...person }
 };
 
@@ -179,6 +193,28 @@ const updateTeacher = async (person) => {
     return{ ...person }
 };
 
+const updateTeacherStats = async (person) => {
+    //Con esto se valida que id  sea un numero
+    console.log(person)
+    if (Number.isNaN(person.user_id)) throw Error("Wrong Type");
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    if (!person.user_id) throw Error("Missing Fields");
+
+    await query(`DELETE FROM maestro_descuentos WHERE id_maestro=?`, [person.user_id])
+    await person.descuentos.forEach(async(element) => {
+        await query(`INSERT INTO maestro_descuentos (id_maestro, cantidad, comentario) values(?,?,?)`, [person.user_id, element.cantidad, element.comentario])
+    });
+    await query(`DELETE FROM maestro_repo WHERE id_maestro=?`, [person.user_id])
+    await person.repos.forEach(async(element) => {
+        await query(`INSERT INTO maestro_repo (id_maestro, cantidad, nombre) values(?,?,?)`, [person.user_id, element.cantidad, element.name])
+    });
+    await query(`DELETE FROM maestro_talleres WHERE id_maestro=?`, [person.user_id])
+    await person.talleres.forEach(async(element) => {
+        await query(`INSERT INTO maestro_talleres (id_maestro, cantidad, taller) values(?,?,?)`, [person.user_id, element.cantidad, element.taller])
+    });
+    return{ ...person }
+};
+
 const remove = async(id, autor, accion)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type"); 
     if (!id) throw Error('Missing Fields');
@@ -199,4 +235,13 @@ const removeStudent = async(id, estado)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, updateStudentAsistencias, findAllStudentAsistencias, removeStudent, findAllStudentClases};
+const removeStudentAsistencia = async(id_alumno, fecha)=>{
+    if (Number.isNaN(id_alumno)) throw Error("Wrong Type"); 
+    if (!id_alumno) throw Error('Missing Fields');
+    const sql = `DELETE FROM alumno_asistencias WHERE id_alumno=? AND fecha=?`;
+    await query(sql,[id_alumno, fecha]);
+
+    return{ idDeleted:id_alumno };
+}
+
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro};
