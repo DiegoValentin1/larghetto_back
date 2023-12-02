@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo} = require('./personal.gateway');
 
 // const getAll = async(req, res=Response)=>{
 //     try {
@@ -18,6 +18,18 @@ const getAllStudentByMaestro = async(req, res=Response)=>{
     try {
         const {id} = req.params;
         const personal = await findAllStudentByMaestro(id);
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllStudentRepo = async(req, res=Response)=>{
+    try {
+        const {id} = req.params;
+        const personal = await findAllStudentRepo(id);
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -251,8 +263,8 @@ const actualizeTeacher = async (req, res = Response) => {
 
  const eliminate = async (req, res = Response) => {
     try {
-       const{ id, autor, accion } =req.body;
-       const person = await remove(id, autor, accion);
+       const{id} =req.params;
+       const person = await remove(id);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -290,6 +302,7 @@ const personalRouter = Router();
 personalRouter.get('/', getAllStudent);
 personalRouter.get('/alumno/activos', getActiveStudents);
 personalRouter.get('/alumno/asistencias/:id', getAllStudentAsistencias);
+personalRouter.get('/alumno/repo/:id', getAllStudentRepo);
 personalRouter.get('/alumno/clases/:id', getAllStudentByMaestro);
 personalRouter.get('/teacher/stats/:id', getAllStatsByMaestro);
 personalRouter.get('/teacher/', getAllTeacher);
@@ -308,8 +321,8 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.get('/:id',[auth, checkRoles(['ADMIN'])], getById);
 // personalRouter.post('/', insert);
 // personalRouter.put('/', actualize);
-personalRouter.delete('/',eliminate);
-personalRouter.delete('/alumno/',eliminateStudent);
+personalRouter.delete('/:id',eliminate);
+personalRouter.put('/alumno/eliminar',eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha',eliminateStudentAsistencias);
 
 module.exports = {personalRouter, };

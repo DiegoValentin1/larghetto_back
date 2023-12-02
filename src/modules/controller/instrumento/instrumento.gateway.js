@@ -37,6 +37,14 @@ const save = async(instrumento)=>{
     return {...instrumento, id:insertedId}
 }
 
+const saveRepo = async(instrumento)=>{
+    
+    const sql = `INSERT INTO alumno_repo(fecha, alumno_id, maestro_id) VALUES(?,?,?)`;
+    const {insertedId} = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id ]);
+
+    return {...instrumento, id:insertedId}
+}
+
 const update = async (instrumento) => {
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(instrumento.id)) throw Error("Wrong Type");
@@ -64,4 +72,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2 /*, findAllAdmin*/};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo /*, findAllAdmin*/};

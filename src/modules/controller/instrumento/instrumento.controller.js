@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2} = require('./instrumento.gateway');
+const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo} = require('./instrumento.gateway');
 
 
 
@@ -85,6 +85,19 @@ const insert = async(req, res=Response)=>{
     }
 }
 
+const insertRepo = async(req, res=Response)=>{
+    try {
+        const {fecha, alumno_id, maestro_id} = req.body;
+        console.log(req.body);
+        const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id});
+        res.status(200).json(instrumentoObj);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
 const actualize = async (req, res = Response) => {
     try {
        const { instrumento, id } = req.body;
@@ -122,6 +135,7 @@ instrumentoRouter.get('/teacher', getAllInstrumentoMaestro);
 instrumentoRouter.get('/lastest', getLastestLogs);
 instrumentoRouter.get('/:id', getById);
 instrumentoRouter.post('/', insert);
+instrumentoRouter.post('/repo', insertRepo);
 instrumentoRouter.put('/', actualize);
 instrumentoRouter.delete('/:id',eliminate);
 

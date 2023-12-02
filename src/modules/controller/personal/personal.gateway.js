@@ -14,6 +14,11 @@ const findAllStudentByMaestro = async(id)=>{
     return await query(sql, [id]);
 }
 
+const findAllStudentRepo = async(id)=>{
+    const sql = `SELECT * FROM alumno_repo WHERE alumno_id=?`;
+    return await query(sql, [id]);
+}
+
 const findAllStatsByMaestro = async(id)=>{
     const sql = `SELECT * FROM maestro_descuentos WHERE id_maestro=?`;
     const sql2 = `SELECT * FROM maestro_repo WHERE id_maestro=?`;
@@ -57,7 +62,7 @@ const findAllStudentClases = async(id)=>{
 }
 
 const activeStudents = async()=>{
-    const sql = `SELECT count(id) as alumnosActivos from users where role='ALUMNO' AND status=1`;
+    const sql = `SELECT count(us.id) as alumnosActivos from users us JOIN alumno alu on alu.user_id=us.id where us.role='ALUMNO' AND alu.estado!=0`;
     return await query(sql, []);
 }
 
@@ -215,12 +220,12 @@ const updateTeacherStats = async (person) => {
     return{ ...person }
 };
 
-const remove = async(id, autor, accion)=>{
+const remove = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type"); 
     if (!id) throw Error('Missing Fields');
     const sql = `UPDATE users SET status=IF(status = true, false, true) WHERE id=?`;
-    const sqlLog = `INSERT INTO logs (fecha, autor, accion) VALUES (CURRENT_TIMESTAMP, ?, ?)`;
-    await query(sqlLog,[autor, accion]);
+    // const sqlLog = `INSERT INTO logs (fecha, autor, accion) VALUES (CURRENT_TIMESTAMP, ?, ?)`;
+    // await query(sqlLog,[autor, accion]);
     await query(sql,[id]);
 
     return{ idDeleted:id };
@@ -244,4 +249,4 @@ const removeStudentAsistencia = async(id_alumno, fecha)=>{
     return{ idDeleted:id_alumno };
 }
 
-module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro};
+module.exports = {findAllStudent, findAllTeacher, findAllInstrumento , saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo};
