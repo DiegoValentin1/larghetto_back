@@ -21,7 +21,7 @@ const sendNotification = (resultados)=>{
 
 const client = mysql.createPool({
     connectionLimit: 5,
-    host: "127.0.0.1",
+    host: "104.237.128.187",
     user: "diego",
     password: "Linode pass 01",
     database: "larghetto",
