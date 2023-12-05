@@ -2,14 +2,14 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const generateToken = (payload)=>{
-    return jwt.sign(payload, process.env.SECRET);
+    return jwt.sign(payload, "UTEZ");
 };
 
 const auth = async(req, res, next)=>{
     try {
         const token = req.headers.authorization?.replace('Bearer ', '');
         if(!token) throw Error('Invalid Token');
-        const decodeToken = jwt.verify(token, process.env.SECRET);
+        const decodeToken = jwt.verify(token, "UTEZ");
         req.token = decodeToken;
         next();
     } catch (error) {

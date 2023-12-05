@@ -2,7 +2,7 @@ const mysql = require('mysql');
 require('dotenv').config();
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({port:8080});
+const wss = new WebSocket.Server({port:8095});
 
 wss.on('connection', function connection(ws){{
     console.log('Cliente conectado al ws')
@@ -21,11 +21,11 @@ const sendNotification = (resultados)=>{
 
 const client = mysql.createPool({
     connectionLimit: 5,
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password:process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    port:process.env.DB_PORT
+    host: "127.0.0.1",
+    user: "diego",
+    password: "Linode pass 01",
+    database: "larghetto",
+    port: 3306
 });//crea una alberca de conecciones, con maximo 5
 
 
