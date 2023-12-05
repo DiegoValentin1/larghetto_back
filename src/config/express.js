@@ -6,6 +6,7 @@ const {personalRouter, instrumentoRouter, promocionRouter, authRouter} = require
 const app = express();
 
 app.set("port", 3000);
+app.set("host", "127.0.0.1");
 app.use(cors({origins:"*"}));
 app.use(express.json({limit:'50mb'}));
 
