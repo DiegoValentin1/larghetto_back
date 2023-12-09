@@ -59,7 +59,7 @@ client.getConnection((err, conn) => {
   
   // Función para realizar acciones basadas en cambios en la tabla
   function realizarAcciones() {
-    const sql = 'SELECT pe.name, alu.proximo_pago FROM alumno_asistencias als JOIN users us on us.id=als.id_alumno JOIN personal pe on pe.id=us.personal_id JOIN alumno alu on alu.user_id=us.id WHERE als.fecha >= NOW() - INTERVAL 5 SECOND;';
+    const sql = 'SELECT pe.name, alu.proximo_pago FROM alumno_asistencias als JOIN users us on us.id=als.id_alumno JOIN personal pe on pe.id=us.personal_id JOIN alumno alu on alu.user_id=us.id ORDER BY alu.proximo_pago DESC LIMIT 3;';
   
     client.query(sql, (err, results) => {
       if (err) {
