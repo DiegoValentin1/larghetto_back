@@ -66,6 +66,8 @@ client.getConnection((err, conn) => {
       try {
         if (results2[0].name===results2[1].name) {
           await query("DELETE FROM alumno_asistencias ORDER BY id DESC LIMIT 1", []);
+          console.log("Se borro");
+          console.log(results2[0])
         }
       } catch (error) {
         console.log(error);
