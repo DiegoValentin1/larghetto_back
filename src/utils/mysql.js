@@ -62,17 +62,14 @@ client.getConnection((err, conn) => {
     const sql = 'SELECT pe.name, alu.proximo_pago FROM alumno_asistencias als JOIN users us on us.id=als.id_alumno JOIN personal pe on pe.id=us.personal_id JOIN alumno alu on alu.user_id=us.id WHERE als.fecha >= NOW() - INTERVAL 5 SECOND;';
   
     client.query(sql, async(err, results) => {
-      const results2 = await query('SELECT pe.name, alu.proximo_pago FROM alumno_asistencias als JOIN users us on us.id=als.id_alumno JOIN personal pe on pe.id=us.personal_id JOIN alumno alu on alu.user_id=us.id ORDER BY als.id DESC LIMIT 3 GROUP BY pe.name;', [])
-      try {
-        const respuestaTerLog = await query("SELECT id_finger as finger FROM terminallog ORDER BY id DESC LIMIT 2", []);
-        if (respuestaTerLog[0].finger===respuestaTerLog[1].finger) {
-          await query("DELETE FROM terminallog ORDER BY id DESC LIMIT 1", []);
-          console.log("Se borro");
-          console.log(respuestaTerLog);
-        }
-      } catch (error) {
-        console.log(error);
-      }
+      const results2 = await query(`SELECT pe.name, MAX(alu.proximo_pago) AS proximo_pago
+      FROM alumno_asistencias als
+      JOIN users us ON us.id = als.id_alumno
+      JOIN personal pe ON pe.id = us.personal_id
+      JOIN alumno alu ON alu.user_id = us.id
+      GROUP BY pe.name
+      ORDER BY MAX(als.id) DESC
+      LIMIT 3;`, []);
       if (err) {
         console.error('Error al realizar consulta:', err);
         return;
@@ -80,9 +77,9 @@ client.getConnection((err, conn) => {
   
       // Realizar acciones en función de los resultados de la consulta
       if (results.length > 0) {
-        sendNotification({...results, ...results2});
+        sendNotification({...results2});
         // Ejemplo: Acciones a realizar si se detectan cambios en la tabla
-        console.log('Se detectaron cambios:', {...results, ...results2});
+        console.log('Se detectaron cambios:', {...results2});
         // Realizar aquí las acciones deseadas, como peticiones HTTP, actualizaciones, etc.
       } else {
         console.log('No se detectaron cambios en la tabla.');
