@@ -39,7 +39,7 @@ const findAllEncargado = async()=>{
 }
 
 const findAllStudent = async()=>{
-    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status , us.id as id_user, al.*, promo.promocion, promo.descuento, al.id as alu_id
+    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status, us.campus, us.id as id_user, al.*, promo.promocion, promo.descuento, al.id as alu_id
     FROM personal pe 
     join users us on us.personal_id=pe.id 
     join alumno al on al.user_id=us.id
