@@ -1,0 +1,72 @@
+const {Response, Router} = require('express');
+const { auth, checkRoles } = require('../../../config/jwt');
+const {validateError} = require('../../../utils/functions');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual } = require('./stats.gateway');
+
+const getAllTotal = async(req, res=Response)=>{
+    try {
+        const stat = await findAllTotal();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllCentro = async(req, res=Response)=>{
+    try {
+        const stat = await findAllCentro();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllBuga = async(req, res=Response)=>{
+    try {
+        const stat = await findAllBuga();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllCuautla = async(req, res=Response)=>{
+    try {
+        const stat = await findAllCuautla();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllActual = async(req, res=Response)=>{
+    try {
+        const stat = await findAllActual();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+
+
+
+const statsRouter = Router();
+
+statsRouter.get('/total/', getAllTotal);
+statsRouter.get('/centro/', getAllCentro);
+statsRouter.get('/buga/', getAllBuga);
+statsRouter.get('/cuautla/', getAllCuautla);
+statsRouter.get('/actual/', getAllActual);
+
+module.exports = {statsRouter, };
