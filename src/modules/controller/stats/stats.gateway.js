@@ -25,4 +25,9 @@ const findAllActual = async()=>{
     return await query(sql, []);
 }
 
-module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual};
+const guardarActual = async()=>{
+    const sql = `call InsertarRegistrosPorCampus()`;
+    return await query(sql, []);
+}
+
+module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual};

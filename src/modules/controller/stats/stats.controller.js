@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual } = require('./stats.gateway');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual } = require('./stats.gateway');
 
 const getAllTotal = async(req, res=Response)=>{
     try {
@@ -58,6 +58,17 @@ const getAllActual = async(req, res=Response)=>{
     }
 }
 
+const saveActual = async(req, res=Response)=>{
+    try {
+        const stat = await guardarActual();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
 
 
 
@@ -68,5 +79,6 @@ statsRouter.get('/centro/', getAllCentro);
 statsRouter.get('/buga/', getAllBuga);
 statsRouter.get('/cuautla/', getAllCuautla);
 statsRouter.get('/actual/', getAllActual);
+statsRouter.get('/save/', saveActual);
 
 module.exports = {statsRouter, };
