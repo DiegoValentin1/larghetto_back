@@ -33,7 +33,7 @@ const findAllRecepcionista = async()=>{
 }
 
 const findAllEncargado = async()=>{
-    const sql = `SELECT pe.*, us.email,us.campus us.role, us.status , us.id as user_id
+    const sql = `SELECT pe.*, us.email,us.campus, us.role, us.status , us.id as user_id
     FROM personal pe join users us on us.personal_id=pe.id WHERE us.role="ENCARGADO"`;
     return await query(sql, []);
 }
