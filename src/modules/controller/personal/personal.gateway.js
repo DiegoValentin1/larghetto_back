@@ -67,7 +67,7 @@ const activeStudents = async()=>{
 }
 
 const findAllTeacher = async()=>{
-    const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
+    const sql = `SELECT pe.*,us.campus, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
     FROM personal pe 
     join users us on us.personal_id=pe.id
     join maestro mae on mae.user_id=us.id
