@@ -20,7 +20,7 @@ const login = async (user) => {
             }), 
             role: existUser[0].role,
             name:existUser[0].name,
-            empresa:existUser[0].empresa
+            campus:existUser[0].campus
 
         }
     throw Error('Password missmatch');

@@ -155,8 +155,8 @@ const getAllInstrumento = async(req, res=Response)=>{
 const insertStudent = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases} = req.body;
-        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases});
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus} = req.body;
+        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono});
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -168,8 +168,8 @@ const insertStudent = async(req, res=Response)=>{
 const actualizeStudent = async (req, res = Response) => {
     console.log(req.body)
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id} = req.body;
-       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id})
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono} = req.body;
+       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -195,8 +195,8 @@ const actualizeStudent = async (req, res = Response) => {
  const insertUser = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,password} = req.body;
-        const person = await saveUser({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, password});
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,password, campus} = req.body;
+        const person = await saveUser({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, password, campus});
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -223,8 +223,8 @@ const actualizeUser = async (req, res = Response) => {
  const insertTeacher = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco, fecha_inicio, comprobante, maestroInstrumentos} = req.body;
-        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos });
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco, fecha_inicio, comprobante, maestroInstrumentos, campus} = req.body;
+        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, campus});
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
