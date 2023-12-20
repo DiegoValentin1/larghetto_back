@@ -159,7 +159,6 @@ const updateStudent = async (person) => {
     });
     if (person.pagos.length > 0) {
         let fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha).getTime())));
-        fechaMasAlta.setMonth(fechaMasAlta.getMonth() + 1);
         fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
     }
