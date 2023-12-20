@@ -114,7 +114,7 @@ const saveStudent = async (person) => {
     console.log(respuesta);
 
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [respuesta[0][0].usuarioInsertado])
-    await person.clases.forEach(async (element) => {
+    person.clases && await person.clases.forEach(async (element) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [respuesta[0][0].usuarioInsertado, element.maestro, element.instrumento, element.dia, element.hora])
     });
 
@@ -150,11 +150,11 @@ const updateStudent = async (person) => {
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.user_id) throw Error("Missing fields");
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
-    await person.clases.forEach(async (element) => {
+    person.clases && await person.clases.forEach(async (element) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
     });
     await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
-    await person.pagos.forEach(async (element) => {
+    person.pagos && await person.pagos.forEach(async (element) => {
         await query(`INSERT INTO alumno_pagos (alumno_id, fecha) values(?,?)`, [person.user_id, element])
     });
     if (person.pagos.length > 0) {
