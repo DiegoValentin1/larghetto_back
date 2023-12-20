@@ -93,7 +93,7 @@ const findById = async (id) => {
 
 const saveStudent = async (person) => {
     console.log(person);
-    if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.clases) throw Error("Missing fields");
+    if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion) throw Error("Missing fields");
     const nombres = person.name.toUpperCase().split(" ");
     var matricula
     if (nombres.length == 1) {
@@ -148,7 +148,7 @@ const updateStudent = async (person) => {
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
-    if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.clases || !person.user_id) throw Error("Missing fields");
+    if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.user_id) throw Error("Missing fields");
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
     await person.clases.forEach(async (element) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
