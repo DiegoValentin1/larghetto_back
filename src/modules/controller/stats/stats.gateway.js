@@ -30,4 +30,9 @@ const guardarActual = async()=>{
     return await query(sql, []);
 }
 
-module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual};
+const findAllAlumnoPagos = async(id)=>{
+    const sql = `SELECT fecha from alumno_pagos WHERE alumno_id=?`;
+    return await query(sql, [id]);
+}
+
+module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos};

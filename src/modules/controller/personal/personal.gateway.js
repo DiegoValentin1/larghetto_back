@@ -153,6 +153,11 @@ const updateStudent = async (person) => {
     await person.clases.forEach(async(element) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
     });
+    await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
+    await person.pagos.forEach(async(element) => {
+        await query(`INSERT INTO alumno_pagos (alumno_id, fecha) values(?,?)`, [person.user_id, element])
+    });
+    await query(`CALL ActualizarProximoPago(?)`, [person.user_id]);
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const {insertedId} = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0,10),person.domicilio,person.municipio, person.telefono,person.contactoEmergencia,person.email,person.role,person.nivel,person.mensualidad,person.instrumento,person.maestro,person.hora,person.dia,person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.padreTelefono, person.madreTelefono]);
     return{ ...person }
