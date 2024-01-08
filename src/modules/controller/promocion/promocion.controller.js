@@ -2,6 +2,7 @@ const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
 const {findAllPromocion, save, update, remove} = require('./promocion.gateway');
+const { insertLog } = require('../stats/stats.gateway');
 
 const getAllPromocion = async(req, res=Response)=>{
     try {
@@ -28,7 +29,8 @@ const getAllPromocion = async(req, res=Response)=>{
 
 const insert = async(req, res=Response)=>{
     try {
-        const {promocion, descuento} = req.body;
+        const {promocion, descuento, empleado} = req.body;
+        await insertLog({empleado, accion:'Promoción añadida'});
         console.log(promocion);
         const promocionObj = await save({promocion, descuento});
         res.status(200).json(promocionObj);
@@ -41,7 +43,8 @@ const insert = async(req, res=Response)=>{
 
 const actualize = async (req, res = Response) => {
     try {
-       const { promocion, id, descuento } = req.body;
+       const { promocion, id, descuento, empleado} = req.body;
+       await insertLog({empleado, accion:'Promoción actualizada'});
        const promocionObj = await update({
           promocion,
           descuento,
@@ -59,6 +62,8 @@ const actualize = async (req, res = Response) => {
  const eliminate = async (req, res = Response) => {
     try {
        const{ id } =req.params;
+       const {empleado} = req.body;
+       await insertLog({empleado, accion:'Promoción eliminada'});
        const person = await remove(id);
        res.status(200).json(person);
     } catch (error) {
