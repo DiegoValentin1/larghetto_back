@@ -2,6 +2,7 @@ const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
 const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo} = require('./instrumento.gateway');
+const { insertLog } = require('../stats/stats.gateway');
 
 
 
@@ -74,7 +75,8 @@ const getById = async(req, res=Response)=>{
 
 const insert = async(req, res=Response)=>{
     try {
-        const {instrumento} = req.body;
+        const {instrumento, empleado} = req.body;
+        await insertLog({empleado, accion:'Instrumento añadido'});
         console.log(instrumento);
         const instrumentoObj = await save({instrumento});
         res.status(200).json(instrumentoObj);
@@ -87,7 +89,8 @@ const insert = async(req, res=Response)=>{
 
 const insertRepo = async(req, res=Response)=>{
     try {
-        const {fecha, alumno_id, maestro_id} = req.body;
+        const {fecha, alumno_id, maestro_id, empleado} = req.body;
+        await insertLog({empleado, accion:'Reposición añadida'});
         console.log(req.body);
         const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id});
         res.status(200).json(instrumentoObj);
@@ -100,7 +103,8 @@ const insertRepo = async(req, res=Response)=>{
 
 const actualize = async (req, res = Response) => {
     try {
-       const { instrumento, id } = req.body;
+       const { instrumento, id, empleado} = req.body;
+       await insertLog({empleado, accion:'Instrumento actualizado'});
        const instrumentoObj = await update({
           instrumento,
           id
@@ -117,6 +121,8 @@ const actualize = async (req, res = Response) => {
  const eliminate = async (req, res = Response) => {
     try {
        const{ id } =req.params;
+       const {empleado} = req.body;
+       await insertLog({empleado, accion:'Instrumento eliminado'});
        const person = await remove(id);
        res.status(200).json(person);
     } catch (error) {

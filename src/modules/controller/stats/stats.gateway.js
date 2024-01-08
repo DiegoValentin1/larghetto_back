@@ -5,6 +5,13 @@ const findAllTotal = async()=>{
     return await query(sql, []);
 }
 
+const insertLog = async(log)=>{
+    const sqlLog = `INSERT INTO logs (fecha, autor, accion) VALUES (CURRENT_TIMESTAMP, ?, ?)`;
+    await query(sqlLog,[log.empleado, log.accion]);
+}
+
+
+
 const findAllCentro = async()=>{
     const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='centro' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
     return await query(sql, []);
@@ -35,4 +42,4 @@ const findAllAlumnoPagos = async(id)=>{
     return await query(sql, [id]);
 }
 
-module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos};
+module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog};
