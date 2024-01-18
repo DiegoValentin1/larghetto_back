@@ -2,6 +2,7 @@ const {Response, Router} = require("express");
 const {validateError} = require("../../../utils/functions");
 const {login, signup, changePassword} = require("./auth.gateway");
 const { auth, checkRoles } = require('../../../config/jwt');
+const { insertLog } = require("../stats/stats.gateway");
 
 const singin = async(req, res=Response)=>{
     try {
