@@ -1,6 +1,7 @@
 const { query } = require("../../../utils/mysql");
 const { generateToken } = require("../../../config/jwt");
 const { validatePassword, hashPassword } = require("../../../utils/functions");
+const { insertLog } = require("../stats/stats.gateway");
 
 const login = async (user) => {
     const { email, password } = user;
@@ -41,6 +42,7 @@ const changePassword = async (user) => {
     const existUser = await query(sql, [email]);
     const hashedPassword = await hashPassword(newpassword);
     console.log(existUser);
+    await insertLog();
     if (
         await validatePassword(oldpassword, existUser[0].password)
     ) {

@@ -6,6 +6,7 @@ const { auth, checkRoles } = require('../../../config/jwt');
 const singin = async(req, res=Response)=>{
     try {
         const {email, password} = req.body;
+        await insertLog({empleado, accion:`El usuario ${email} ha iniciado sesión`});
         const token = await login({email, password});
         res.status(200).json(token);
     } catch (error) {
@@ -18,6 +19,7 @@ const singin = async(req, res=Response)=>{
 const register = async(req, res=Response)=>{
     try {
         const {email, password, role, name, empresa} = req.body;
+        await insertLog({empleado, accion:`Nuevo usuario ${email} registrado`});
         await signup({email, password, role, name, empresa});
         res.status(200).json("OK");
     } catch (error) {
@@ -29,7 +31,8 @@ const register = async(req, res=Response)=>{
 
 const swapPass = async(req, res=Response)=>{
     try {
-        const {email, oldpassword, newpassword} = req.body;
+        const {email, oldpassword, newpassword, empleado} = req.body;
+        await insertLog({empleado, accion:`Contraseña de ${email} modificada`});
         const token = await changePassword({email, oldpassword, newpassword});
         res.status(200).json(token);
     } catch (error) {
