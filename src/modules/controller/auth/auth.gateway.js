@@ -17,10 +17,10 @@ const login = async (user) => {
                 email: existUser[0].email,
                 role: existUser[0].role,
                 isLogged: true
-            }), 
+            }),
             role: existUser[0].role,
-            name:existUser[0].name,
-            campus:existUser[0].campus
+            name: existUser[0].name,
+            campus: existUser[0].campus
 
         }
     throw Error('Password missmatch');
@@ -34,6 +34,23 @@ const signup = async (user) => {
     await query(sql, [email, hashedPassword, role, name, empresa]);
 }
 
+const changePassword = async (user) => {
+    const { email, oldpassword, newpassword } = user;
+    if (!email || !password) throw Error('Missing fields');
+    const sql = `SELECT * FROM users join personal on users.personal_id = personal.id WHERE email=? AND users.status=1`;
+    const existUser = await query(sql, [email]);
+    const hashedPassword = await hashPassword(newpassword);
+    console.log(existUser);
+    if (
+        await validatePassword(oldpassword, existUser[0].password)
+    ) {
+        const sql = `UPDATE users SET password=? WHERE email=?`;
+        await query(sql, [hashedPassword,email]);
+        return { status: true }
+    }
+    throw Error('Password missmatch');
+}
+
 module.exports = {
-    login, signup
+    login, signup, changePassword
 }
