@@ -36,7 +36,7 @@ const signup = async (user) => {
 
 const changePassword = async (user) => {
     const { email, oldpassword, newpassword } = user;
-    if (!email || !password) throw Error('Missing fields');
+    if (!email || !oldpassword || !newpassword) throw Error('Missing fields');
     const sql = `SELECT * FROM users join personal on users.personal_id = personal.id WHERE email=? AND users.status=1`;
     const existUser = await query(sql, [email]);
     const hashedPassword = await hashPassword(newpassword);
