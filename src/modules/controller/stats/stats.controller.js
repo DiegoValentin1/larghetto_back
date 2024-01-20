@@ -116,7 +116,7 @@ statsRouter.get('/actual/', getAllActual);
 statsRouter.get('/save/', saveActual);
 /*-------*/
 statsRouter.get('/pagos/:id', getAllAlumnoPagos);
-statsRouter.get('/pagos/suma/', getAlumnoPagosMes);
+statsRouter.get('/pagos/suma/total', getAlumnoPagosMes);
 statsRouter.get('/pagos/suma/:campus', getAlumnoPagosMesCampus);
 
 module.exports = {statsRouter, };
