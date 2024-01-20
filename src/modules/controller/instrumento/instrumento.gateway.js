@@ -30,8 +30,6 @@ const findById = async(id)=>{
 }
 
 const findAlumnosClasesCampus = async(campus)=>{
-    if (Number.isNaN(id)) throw Error("Wrong Type");
-    if(!id)throw Error("Missing fields");
     const sql = `SELECT count(*) from alumno_clases alc 
     JOIN users us on us.id=alc.id_alumno
     WHERE us.campus=?`;
@@ -40,8 +38,6 @@ const findAlumnosClasesCampus = async(campus)=>{
 }
 
 const findAlumnosClases = async()=>{
-    if (Number.isNaN(id)) throw Error("Wrong Type");
-    if(!id)throw Error("Missing fields");
     const sql = `SELECT count(*) from alumno_clases alc 
     JOIN users us on us.id=alc.id_alumno`;
 
