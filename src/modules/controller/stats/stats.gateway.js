@@ -42,4 +42,19 @@ const findAllAlumnoPagos = async(id)=>{
     return await query(sql, [id]);
 }
 
-module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog};
+const findAlumnoPagosMes = async()=>{
+    const sql = `SELECT sum(mensualidad) from alumno_pagos alp 
+    JOIN alumno alu on alu.user_id=alp.alumno_id
+    WHERE fecha=DATE_FORMAT(curdate(), '%Y-%m-01')`;
+    return await query(sql, []);
+}
+
+const findAlumnoPagosMesCampus = async(campus)=>{
+    const sql = `SELECT sum(mensualidad) from alumno_pagos alp 
+    JOIN alumno alu on alu.user_id=alp.alumno_id 
+    JOIN users us on us.id=alu.user_id
+    WHERE fecha=DATE_FORMAT(curdate(), '%Y-%m-01') AND us.campus = ?`;
+    return await query(sql, [campus]);
+}
+
+module.exports = {findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus};
