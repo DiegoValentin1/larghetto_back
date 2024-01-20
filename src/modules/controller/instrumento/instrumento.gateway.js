@@ -39,7 +39,6 @@ const findAlumnosClasesCampus = async(campus)=>{
 
 const findAlumnosClases = async()=>{
     const sql = `SELECT count(*) from alumno_clases`;
-
     return await query(sql, []);
 }
 

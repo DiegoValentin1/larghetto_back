@@ -168,7 +168,7 @@ instrumentoRouter.post('/', insert);
 instrumentoRouter.post('/repo', insertRepo);
 instrumentoRouter.put('/', actualize);
 instrumentoRouter.delete('/:id',eliminate);
-instrumentoRouter.get('/clases/:campus', getAlumnoClasesCampus);
+instrumentoRouter.get('/clases/total/:campus', getAlumnoClasesCampus);
 instrumentoRouter.get('/clases/total', getAlumnoClases);
 
 module.exports = {instrumentoRouter, };
