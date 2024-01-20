@@ -29,6 +29,25 @@ const findById = async(id)=>{
     return await query(sql, [id]);
 }
 
+const findAlumnosClasesCampus = async(campus)=>{
+    if (Number.isNaN(id)) throw Error("Wrong Type");
+    if(!id)throw Error("Missing fields");
+    const sql = `SELECT count(*) from alumno_clases alc 
+    JOIN users us on us.id=alc.id_alumno
+    WHERE us.campus=?`;
+
+    return await query(sql, [campus]);
+}
+
+const findAlumnosClases = async()=>{
+    if (Number.isNaN(id)) throw Error("Wrong Type");
+    if(!id)throw Error("Missing fields");
+    const sql = `SELECT count(*) from alumno_clases alc 
+    JOIN users us on us.id=alc.id_alumno`;
+
+    return await query(sql, []);
+}
+
 const save = async(instrumento)=>{
     if(!instrumento.instrumento) throw Error("Missing fields");
     const sql = `INSERT INTO instrumento(instrumento) VALUES(?)`;
@@ -72,4 +91,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo /*, findAllAdmin*/};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo /*, findAllAdmin*/, findAlumnosClases, findAlumnosClasesCampus};
