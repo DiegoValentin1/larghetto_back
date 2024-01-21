@@ -17,7 +17,7 @@ const findAllInstrumentoMaestro = async()=>{
 }
 
 const findLastestLogs = async()=>{
-    const sql = `SELECT * FROM logs ORDER BY id DESC LIMIT 4`;
+    const sql = `SELECT * FROM logs ORDER BY id DESC`;
     return await query(sql, []);
 }
 
