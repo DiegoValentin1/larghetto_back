@@ -55,7 +55,7 @@ const findAllStudentAsistencias = async (id) => {
 
 const findAllStudentClases = async (id) => {
     const sql = `SELECT ac.*, ins.instrumento, pe.name FROM alumno_clases ac
-    join users us on us.id=ac.id_maestro
+    join users us on us.id=ac.id_maestro AND us.role='MAESTRO'
     join personal pe on pe.id=us.personal_id
     join instrumento ins on ins.id=ac.id_instrumento WHERE ac.id_alumno=?`;
     return await query(sql, [id]);
