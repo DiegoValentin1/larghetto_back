@@ -258,4 +258,13 @@ const removeStudentAsistencia = async (id_alumno, fecha) => {
     return { idDeleted: id_alumno };
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo };
+const removeStudentPermanente = async (uid, pid) => {
+    if (Number.isNaN(uid) || Number.isNaN(pid)) throw Error("Wrong Type");
+    if (!uid || !pid) throw Error('Missing Fields');
+    const sql = `CALL EliminarAlumno(?,?)`;
+    await query(sql, [uid, pid]);
+
+    return { idDeleted: uid };
+}
+
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente };

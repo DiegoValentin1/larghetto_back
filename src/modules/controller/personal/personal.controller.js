@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -311,6 +311,20 @@ const actualizeTeacher = async (req, res = Response) => {
     }
  }
 
+ const eliminateStudentPermanente = async (req, res = Response) => {
+    try {
+       const{uid, pid} =req.params;
+       const {empleado} = req.body;
+       await insertLog({empleado, accion:'Estudiante Eliminado Permanentemente'});
+       const person = await removeStudentPermanente(uid, pid);
+       res.status(200).json(person);
+    } catch (error) {
+       console.log(error);
+       const message = validateError(error);
+       res.status(400).json({ message });
+    }
+ }
+
 const personalRouter = Router();
 
 personalRouter.get('/', getAllStudent);
@@ -336,6 +350,7 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.post('/', insert);
 // personalRouter.put('/', actualize);
 personalRouter.delete('/:id',eliminate);
+personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha',eliminateStudentAsistencias);
 
