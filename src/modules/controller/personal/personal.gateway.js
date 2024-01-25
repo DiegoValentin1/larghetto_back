@@ -109,7 +109,7 @@ const saveStudent = async (person) => {
     }
 
     const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const respuesta = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.promocion, person.observaciones, matricula,person.campus, person.nombreMadre || 'N/A', person.nombrePadre || 'N/A', person.padreTelefono || 'N/A', person.madreTelefono || 'N/A']);
+    const respuesta = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.promocion, person.observaciones, matricula, person.campus, person.nombreMadre || 'N/A', person.nombrePadre || 'N/A', person.padreTelefono || 'N/A', person.madreTelefono || 'N/A']);
 
     console.log(respuesta);
 
@@ -158,12 +158,13 @@ const updateStudent = async (person) => {
         await query(`INSERT INTO alumno_pagos (alumno_id, fecha) values(?,?)`, [person.user_id, element])
     });
     if (person.pagos.length > 0) {
-        let fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha).getTime())));
+        const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha).getTime())));
         fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
-    }else{
-        let fechaMasAlta = new Date(`${new Date().getFullYear()}-01-01T00:00:00`);
-        await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
+    } else {
+        const fechaActual = new Date(`${new Date().getFullYear()}-01-01T00:00:00`);
+        fechaActual.setMonth(fechaActual.getMonth() - 1);
+        await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaActual]);
     }
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.padreTelefono, person.madreTelefono]);
