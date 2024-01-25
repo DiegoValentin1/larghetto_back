@@ -162,7 +162,7 @@ const updateStudent = async (person) => {
         fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
     }else{
-        let fechaMasAlta = new Date(new Date().getFullYear(), 0, 1, -6);
+        let fechaMasAlta = new Date(new Date().getFullYear(), 0, 1, +8);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
     }
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
