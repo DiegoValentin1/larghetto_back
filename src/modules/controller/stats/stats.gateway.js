@@ -28,7 +28,10 @@ const findAllCuautla = async()=>{
 }
 
 const findAllActual = async()=>{
-    const sql = `SELECT us.campus, count(us.id) as total FROM users us JOIN alumno alu on alu.user_id=us.id WHERE us.role='ALUMNO' AND alu.estado != 0 group by us.campus`;
+    const sql = `SELECT us.campus, count(alc.id) as total FROM alumno_clases as alc
+    JOIN users us on us.id=alc.id_alumno
+    JOIN alumno alu on alu.user_id=us.id 
+    WHERE us.role='ALUMNO' AND alu.estado != 0 group by us.campus`;
     return await query(sql, []);
 }
 
