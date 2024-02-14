@@ -155,7 +155,7 @@ const updateStudent = async (person) => {
     });
     await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
     person.pagos && await person.pagos.forEach(async (element) => {
-        await query(`INSERT INTO alumno_pagos (alumno_id, fecha) values(?,?)`, [person.user_id, element])
+        await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo) values(?,?,?)`, [person.user_id, element.fecha, element.tipo])
     });
     if (person.pagos.length > 0) {
         const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha).getTime())));
