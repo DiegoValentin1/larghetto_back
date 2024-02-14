@@ -158,7 +158,7 @@ const updateStudent = async (person) => {
         await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo) values(?,?,?)`, [person.user_id, element.fecha, element.tipo])
     });
     if (person.pagos.length > 0) {
-        const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha).getTime())));
+        const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha.fecha).getTime())));
         fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
     } else {
