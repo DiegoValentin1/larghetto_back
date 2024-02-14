@@ -41,7 +41,7 @@ const guardarActual = async()=>{
 }
 
 const findAllAlumnoPagos = async(id)=>{
-    const sql = `SELECT fecha from alumno_pagos WHERE alumno_id=?`;
+    const sql = `SELECT fecha, tipo from alumno_pagos WHERE alumno_id=?`;
     return await query(sql, [id]);
 }
 
