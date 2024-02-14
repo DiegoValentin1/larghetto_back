@@ -141,7 +141,7 @@ statsRouter.get('/save/', saveActual);
 statsRouter.get('/pagos/:id', getAllAlumnoPagos);
 statsRouter.get('/pagos/suma/total', getAlumnoPagosMes);
 statsRouter.get('/pagos/suma/:campus', getAlumnoPagosMesCampus);
-statsRouter.get('/pagos/total/mensualidades', getAlumnoPagosMes);
-statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoPagosMesCampus);
+statsRouter.get('/pagos/total/mensualidades', getAlumnoTotalMensualidades);
+statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoTotalMensualidadesCampus);
 
 module.exports = {statsRouter, };
