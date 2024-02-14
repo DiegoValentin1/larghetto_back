@@ -45,22 +45,39 @@ const findAllAlumnoPagos = async (id) => {
     return await query(sql, [id]);
 }
 
+const findAllAlumnoMensualidades = async () => {
+    const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
+    JOIN alumno_pagos alp on alp.alumno_id=alu.user_id 
+    JOIN promocion pro on pro.id=alu.promocion_id
+    JOIN users us on us.id=alu.user_id
+    WHERE alu.estado!=0`;
+    return await query(sql, []);
+}
+
+const findAllAlumnoMensualidadesCampus = async (campus) => {
+    const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
+    JOIN alumno_pagos alp on alp.alumno_id=alu.user_id 
+    JOIN promocion pro on pro.id=alu.promocion_id
+    JOIN users us on us.id=alu.user_id
+    WHERE alu.estado!=0 AND us.campus=?`;
+    return await query(sql, [campus]);
+}
+
 const findAlumnoPagosMes = async () => {
     const sql = `SELECT 
     SUM(
         CASE tipo
-            WHEN 1 THEN mensualidad
-            WHEN 2 THEN mensualidad * 0.95  -- Restar 5%
-            WHEN 3 THEN mensualidad * 1.10  -- Sumar 10%
+            WHEN 1 THEN mensualidad - (alu.mensualidad * (pro.descuento/100))
+            WHEN 2 THEN (mensualidad - (alu.mensualidad * (pro.descuento/100))) * 0.95  -- Restar 5%
+            WHEN 3 THEN (mensualidad - (alu.mensualidad * (pro.descuento/100))) * 1.10  -- Sumar 10%
             ELSE mensualidad  -- En caso de que tipo no sea 1, 2 o 3, sumar normalmente
         END
     ) AS total_pagado
 FROM 
     alumno_pagos alp 
-JOIN 
-    alumno alu ON alu.user_id = alp.alumno_id 
-JOIN 
-    users us ON us.id = alu.user_id
+JOIN alumno alu ON alu.user_id = alp.alumno_id 
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro on pro.id=alu.promocion_id
 WHERE 
     fecha = DATE_FORMAT(curdate(), '%Y-%m-01')`;
     return await query(sql, []);
@@ -70,22 +87,21 @@ const findAlumnoPagosMesCampus = async (campus) => {
     const sql = `SELECT 
     SUM(
         CASE tipo
-            WHEN 1 THEN mensualidad
-            WHEN 2 THEN mensualidad * 0.95  -- Restar 5%
-            WHEN 3 THEN mensualidad * 1.10  -- Sumar 10%
+            WHEN 1 THEN mensualidad - (alu.mensualidad * (pro.descuento/100))
+            WHEN 2 THEN (mensualidad - (alu.mensualidad * (pro.descuento/100))) * 0.95  -- Restar 5%
+            WHEN 3 THEN (mensualidad - (alu.mensualidad * (pro.descuento/100))) * 1.10  -- Sumar 10%
             ELSE mensualidad  -- En caso de que tipo no sea 1, 2 o 3, sumar normalmente
         END
     ) AS total_pagado
 FROM 
     alumno_pagos alp 
-JOIN 
-    alumno alu ON alu.user_id = alp.alumno_id 
-JOIN 
-    users us ON us.id = alu.user_id
+JOIN alumno alu ON alu.user_id = alp.alumno_id 
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro on pro.id=alu.promocion_id
 WHERE 
     fecha = DATE_FORMAT(curdate(), '%Y-%m-01') 
     AND us.campus =?`;
     return await query(sql, [campus]);
 }
 
-module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus };
+module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus };
