@@ -271,4 +271,14 @@ const removeStudentPermanente = async (uid, pid) => {
     return { idDeleted: uid };
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente };
+const checkMatricula = async (matricula) => {
+    if (!matricula) throw Error('Missing Fields');
+    let nuevoStrnuevoStr = matricula.length === 6 ? matricula.substring(0, 2) + '%' + matricula.substring(2) : nuevoStr = matricula.substring(0, 2) + '%' + matricula.substring(3);
+    console.log(nuevoStr);
+    const sql = `select count(matricula) as conteo from alumno where matricula like ?`;
+    const respuesta = await query(sql, [nuevoStr]);
+    console.log(respuesta);
+    return respuesta[0];
+}
+
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula};

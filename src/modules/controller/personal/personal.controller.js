@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -325,6 +325,18 @@ const actualizeTeacher = async (req, res = Response) => {
     }
  }
 
+ const matriculaExists = async (req, res = Response) => {
+    try {
+       const{matricula} =req.params;
+       const person = await checkMatricula(matricula);
+       res.status(200).json(person);
+    } catch (error) {
+       console.log(error);
+       const message = validateError(error);
+       res.status(400).json({ message });
+    }
+ }
+
 const personalRouter = Router();
 
 personalRouter.get('/', getAllStudent);
@@ -335,6 +347,7 @@ personalRouter.get('/alumno/clases/:id', getAllStudentByMaestro);
 personalRouter.get('/teacher/stats/:id', getAllStatsByMaestro);
 personalRouter.get('/teacher/', getAllTeacher);
 personalRouter.get('/clases/:id', getAllStudentClases);
+personalRouter.get('/matricula/check/:matricula', matriculaExists);
 personalRouter.get('/recepcionista/', getAllRecepcionista);
 personalRouter.get('/encargado/', getAllEncargado);
 personalRouter.post('/alumno/asistencias', insertStudentAsistencias);
