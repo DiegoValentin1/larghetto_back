@@ -184,9 +184,9 @@ const actualizeStudent = async (req, res = Response) => {
 
  const insertStudentAsistencias = async (req, res = Response) => {
     try {
-       const {id_alumno, fecha, empleado} = req.body;
+       const {id_alumno, fecha, empleado, id_clase} = req.body;
        await insertLog({empleado, accion:'Asistencia Añadida'});
-       const person = await saveStudentAsistencias({id_alumno, fecha})
+       const person = await saveStudentAsistencias({id_alumno, fecha, id_clase})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -299,10 +299,10 @@ const actualizeTeacher = async (req, res = Response) => {
 
  const eliminateStudentAsistencias = async (req, res = Response) => {
     try {
-       const{id_alumno, fecha} =req.params;
+       const{id_alumno, fecha, id_clase} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Estudiante asistencia eliminada'});
-       const person = await removeStudentAsistencia(id_alumno, fecha);
+       const person = await removeStudentAsistencia(id_alumno, fecha, id_clase);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -365,6 +365,6 @@ personalRouter.put('/user', actualizeUser);
 personalRouter.delete('/:id',eliminate);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',eliminateStudent);
-personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha',eliminateStudentAsistencias);
+personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);
 
 module.exports = {personalRouter, };

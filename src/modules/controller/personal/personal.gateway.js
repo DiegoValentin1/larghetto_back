@@ -174,9 +174,9 @@ const updateStudent = async (person) => {
 const saveStudentAsistencias = async (person) => {
     console.log(person);
     if (Number.isNaN(person.id_alumno)) throw Error("Wrong Type");
-    if (!person.id_alumno || !person.fecha) throw Error("Missing Fields");
-    const sql = `INSERT INTO alumno_asistencias (id_alumno, fecha) VALUES (?,?)`;
-    const { insertedId } = await query(sql, [person.id_alumno, person.fecha]);
+    if (!person.id_alumno || !person.fecha || !person.id_clase) throw Error("Missing Fields");
+    const sql = `INSERT INTO alumno_asistencias (id_alumno, fecha, id_clase) VALUES (?,?,?)`;
+    const { insertedId } = await query(sql, [person.id_alumno, person.fecha, person.id_clase]);
     return { ...person }
 };
 
@@ -253,11 +253,11 @@ const removeStudent = async (id, estado) => {
     return { idDeleted: id };
 }
 
-const removeStudentAsistencia = async (id_alumno, fecha) => {
+const removeStudentAsistencia = async (id_alumno, fecha, id_clase) => {
     if (Number.isNaN(id_alumno)) throw Error("Wrong Type");
     if (!id_alumno) throw Error('Missing Fields');
-    const sql = `DELETE FROM alumno_asistencias WHERE id_alumno=? AND fecha=?`;
-    await query(sql, [id_alumno, fecha]);
+    const sql = `DELETE FROM alumno_asistencias WHERE id_alumno=? AND fecha=? AND id_clase=?`;
+    await query(sql, [id_alumno, fecha, id_clase]);
 
     return { idDeleted: id_alumno };
 }
