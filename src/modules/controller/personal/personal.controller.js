@@ -156,9 +156,9 @@ const getAllInstrumento = async(req, res=Response)=>{
 const insertStudent = async(req, res=Response)=>{
     try {
         console.log(req.body);
-        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, empleado} = req.body;
+        const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, empleado, inscripcion, fechaInicio} = req.body;
         await insertLog({empleado, accion:'Estudiante añadido'});
-        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus});
+        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, inscripcion, fechaInicio});
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -170,9 +170,9 @@ const insertStudent = async(req, res=Response)=>{
 const actualizeStudent = async (req, res = Response) => {
     console.log(req.body)
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, empleado} = req.body;
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, empleado, inscripcion, fechaInicio} = req.body;
        await insertLog({empleado, accion:'Estudiante modificado'});
-       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos})
+       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, inscripcion, fechaInicio})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
