@@ -20,6 +20,12 @@ ORDER BY alc.dia;`;
     return await query(sql, [id]);
 }
 
+const findHorarioAllByMaestro = async (id) => {
+    if (!id) throw Error("Missing fields");
+    const sql = `SELECT * from maestro_clases WHERE id_maestro=?`;
+    return await query(sql, [id]);
+}
+
 // const save = async(promocion)=>{
 //     if(!promocion.promocion) throw Error("Missing fields");
 //     const sql = `INSERT INTO promocion(promocion, descuento) VALUES(?,?)`;
@@ -56,4 +62,4 @@ ORDER BY alc.dia;`;
 //     return{ idDeleted:id };
 // }
 
-module.exports = { findAllByMaestro };
+module.exports = { findAllByMaestro, findHorarioAllByMaestro };

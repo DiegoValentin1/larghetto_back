@@ -15,7 +15,22 @@ const findAllStudentByMaestro = async (id) => {
 }
 
 const findAllStudentRepo = async (id) => {
-    const sql = `SELECT * FROM alumno_repo WHERE alumno_id=?`;
+    const sql = `SELECT alr.id as id_repo, alr.fecha, pem.name
+    FROM alumno_repo alr
+    JOIN users us ON us.id = alr.alumno_id
+    JOIN personal pe ON pe.id = us.personal_id
+    JOIN users usm ON usm.id = alr.maestro_id
+    JOIN personal pem ON pem.id = usm.personal_id
+    WHERE MONTH(alr.fecha) >= MONTH(CURRENT_DATE()) AND YEAR(alr.fecha) >= YEAR(CURRENT_DATE()) AND alumno_id=?;`;
+    return await query(sql, [id]);
+}
+
+const findAllTeacherRepo = async (id) => {
+    const sql = `SELECT pe.name, alr.fecha
+    FROM alumno_repo alr
+    JOIN users us ON us.id = alr.alumno_id
+    JOIN personal pe ON pe.id = us.personal_id
+    WHERE MONTH(alr.fecha) >= MONTH(CURRENT_DATE()) AND YEAR(alr.fecha) >= YEAR(CURRENT_DATE()) AND maestro_id=?`;
     return await query(sql, [id]);
 }
 
@@ -46,6 +61,16 @@ const findAllStudent = async () => {
     join promocion promo on promo.id=al.promocion_id
     WHERE us.role='ALUMNO'`;
     return await query(sql, []);
+}
+
+const findAllStudentCampus = async (campus) => {
+    const sql = `SELECT pe.*,pe.id as personal_id, us.email, us.role, us.status, us.campus, us.id as id_user, al.*, promo.promocion, promo.descuento, al.id as alu_id
+    FROM personal pe 
+    join users us on us.personal_id=pe.id 
+    join alumno al on al.user_id=us.id
+    join promocion promo on promo.id=al.promocion_id
+    WHERE us.role='ALUMNO' AND us.campus=?`;
+    return await query(sql, [campus]);
 }
 
 const findAllStudentAsistencias = async (id) => {
@@ -201,7 +226,10 @@ const updateTeacher = async (person) => {
     //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.fecha_inicio || !person.banco) throw Error("Missing fields");
-
+    await query(`DELETE FROM maestro_clases WHERE id_maestro=?`, [person.user_id])
+    person.clases && await person.clases.forEach(async (element) => {
+        await query(`INSERT INTO maestro_clases (id_maestro, id_instrumento, dia, hora) values(?,?,?,?)`, [person.user_id, element.instrumento, element.dia, element.hora])
+    });
     await query(`DELETE FROM maestro_instrumento WHERE maestro_id=?`, [person.user_id])
     await person.maestroInstrumentos.forEach(async (element) => {
         await query(`INSERT INTO maestro_instrumento (maestro_id, instrumento_id) values(?,?)`, [person.user_id, element.instrumento_id])
@@ -281,4 +309,4 @@ const checkMatricula = async (matricula) => {
     return respuesta[0];
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula};
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus};

@@ -47,20 +47,54 @@ const findAllAlumnoPagos = async (id) => {
 
 const findAllAlumnoMensualidades = async () => {
     const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
-    JOIN alumno_pagos alp on alp.alumno_id=alu.user_id 
     JOIN promocion pro on pro.id=alu.promocion_id
     JOIN users us on us.id=alu.user_id
     WHERE alu.estado!=0`;
-    return await query(sql, []);
+    const response = await query(sql, []);
+    const sql2 = `SELECT 
+    SUM(
+        CASE tipo
+            WHEN 2 THEN mensualidad - ((mensualidad - (alu.mensualidad * (pro.descuento/100))) * 0.95)  -- Restar 5%
+            WHEN 3 THEN mensualidad - ((mensualidad - (alu.mensualidad * (pro.descuento/100))) * 1.10)  -- Sumar 10%
+            ELSE 0  -- En caso de que tipo no sea 1, 2 o 3, sumar normalmente
+        END
+    ) AS total_pagado_resta
+FROM 
+    alumno alu
+JOIN alumno_pagos alp ON alu.user_id = alp.alumno_id 
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro on pro.id=alu.promocion_id
+WHERE 
+    fecha = DATE_FORMAT(curdate(), '%Y-%m-01');`;
+    const response2 = await query(sql2, []);
+        const total_mensualidad = response[0].total_mensualidad-response2[0].total_pagado_resta;
+    return [{total_mensualidad}];
 }
 
 const findAllAlumnoMensualidadesCampus = async (campus) => {
     const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
-    JOIN alumno_pagos alp on alp.alumno_id=alu.user_id 
     JOIN promocion pro on pro.id=alu.promocion_id
     JOIN users us on us.id=alu.user_id
-    WHERE alu.estado!=0 AND us.campus=?`;
-    return await query(sql, [campus]);
+    WHERE alu.estado!=0 AND campus=?`;
+    const response = await query(sql, [campus]);
+    const sql2 = `SELECT 
+    SUM(
+        CASE tipo
+            WHEN 2 THEN mensualidad - ((mensualidad - (alu.mensualidad * (pro.descuento/100))) * 0.95)  -- Restar 5%
+            WHEN 3 THEN mensualidad - ((mensualidad - (alu.mensualidad * (pro.descuento/100))) * 1.10)  -- Sumar 10%
+            ELSE 0  -- En caso de que tipo no sea 1, 2 o 3, sumar normalmente
+        END
+    ) AS total_pagado_resta
+FROM 
+    alumno alu
+JOIN alumno_pagos alp ON alu.user_id = alp.alumno_id 
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro on pro.id=alu.promocion_id
+WHERE 
+    fecha = DATE_FORMAT(curdate(), '%Y-%m-01') AND campus=?;`;
+    const response2 = await query(sql2, [campus]);
+        const total_mensualidad = response[0].total_mensualidad-response2[0].total_pagado_resta;
+    return [{total_mensualidad}];
 }
 
 const findAlumnoPagosMes = async () => {
@@ -100,7 +134,7 @@ JOIN users us ON us.id = alu.user_id
 JOIN promocion pro on pro.id=alu.promocion_id
 WHERE 
     fecha = DATE_FORMAT(curdate(), '%Y-%m-01') 
-    AND us.campus =?`;
+    AND campus =?`;
     return await query(sql, [campus]);
 }
 
