@@ -366,7 +366,7 @@ const actualizeTeacher = async (req, res = Response) => {
 const personalRouter = Router();
 
 personalRouter.get('/', getAllStudent);
-personalRouter.get('/:campus', getAllStudentCampus);
+personalRouter.get('/getalumno/:campus', getAllStudentCampus);
 personalRouter.get('/alumno/activos', getActiveStudents);
 personalRouter.get('/alumno/asistencias/:id', getAllStudentAsistencias);
 personalRouter.get('/alumno/repo/:id', getAllStudentRepo);
