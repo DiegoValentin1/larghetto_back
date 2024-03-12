@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus } = require('./stats.gateway');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus } = require('./stats.gateway');
 
 const getAllTotal = async(req, res=Response)=>{
     try {
@@ -128,6 +128,30 @@ const getAlumnoTotalMensualidadesCampus = async(req, res=Response)=>{
 }
 
 
+const getAlumnoTotalInscripciones = async(req, res=Response)=>{
+    try {
+        const stat = await findAllAlumnoInscripciones();
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAlumnoTotalInscripcionesCampus = async(req, res=Response)=>{
+    try {
+        const {campus} = req.params;
+        const stat = await findAllAlumnoInscripcionesCampus(campus);
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+
 
 const statsRouter = Router();
 
@@ -143,5 +167,7 @@ statsRouter.get('/pagos/suma/total', getAlumnoPagosMes);
 statsRouter.get('/pagos/suma/:campus', getAlumnoPagosMesCampus);
 statsRouter.get('/pagos/total/mensualidades', getAlumnoTotalMensualidades);
 statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoTotalMensualidadesCampus);
+statsRouter.get('/pagos/total/inscripciones', getAlumnoTotalInscripciones);
+statsRouter.get('/pagos/total/inscripciones/:campus', getAlumnoTotalInscripcionesCampus);
 
 module.exports = {statsRouter, };

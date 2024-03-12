@@ -97,6 +97,18 @@ WHERE
     return [{total_mensualidad}];
 }
 
+const findAllAlumnoInscripciones = async () => {
+    const sql = `select sum(inscripcion) total_inscripciones from alumno where estado=2;`;
+    return await query(sql);
+}
+
+const findAllAlumnoInscripcionesCampus = async (campus) => {
+    const sql = `select sum(inscripcion) as total_inscripciones from alumno alu
+    JOIN users us on us.id=alu.user_id
+    where estado=2 AND campus=?;`;
+    return await query(sql, [campus]);
+}
+
 const findAlumnoPagosMes = async () => {
     const sql = `SELECT 
     SUM(
@@ -138,4 +150,4 @@ WHERE
     return await query(sql, [campus]);
 }
 
-module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus };
+module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus };
