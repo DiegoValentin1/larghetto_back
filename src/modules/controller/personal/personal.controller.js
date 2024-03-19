@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -310,6 +310,20 @@ const actualizeTeacher = async (req, res = Response) => {
     }
  }
 
+ const eliminateRepo = async (req, res = Response) => {
+    try {
+       const{id} =req.params;
+       const {empleado} = req.body;
+       await insertLog({empleado, accion:'Eliminó Reposición'});
+       const person = await removeRepo(id);
+       res.status(200).json(person);
+    } catch (error) {
+       console.log(error);
+       const message = validateError(error);
+       res.status(400).json({ message });
+    }
+ }
+
  const eliminateStudent = async (req, res = Response) => {
     try {
        const{ id, estado, empleado } =req.body;
@@ -391,6 +405,7 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.post('/', insert);
 // personalRouter.put('/', actualize);
 personalRouter.delete('/:id',eliminate);
+personalRouter.delete('/repo/:id',eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);

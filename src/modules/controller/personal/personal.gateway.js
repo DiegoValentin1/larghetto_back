@@ -272,6 +272,15 @@ const remove = async (id) => {
     return { idDeleted: id };
 }
 
+const removeRepo = async (id) => {
+    if (Number.isNaN(id)) throw Error("Wrong Type");
+    if (!id) throw Error('Missing Fields');
+    const sql = `DELETE FROM alumno_repo WHERE id=?`;
+    await query(sql, [id]);
+
+    return { idDeleted: id };
+}
+
 const removeStudent = async (id, estado) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
@@ -309,4 +318,4 @@ const checkMatricula = async (matricula) => {
     return respuesta[0];
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus};
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo};
