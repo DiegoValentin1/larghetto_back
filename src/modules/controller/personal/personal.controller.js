@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -148,6 +148,17 @@ const getAllRecepcionista = async(req, res=Response)=>{
 const getAllTeacher = async(req, res=Response)=>{
     try {
         const personal = await findAllTeacher();
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllTeacherByStatus = async(req, res=Response)=>{
+    try {
+        const personal = await findAllTeacherByStatus();
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -388,6 +399,7 @@ personalRouter.get('/teacher/repo/:id', getAllTeacherRepo);
 personalRouter.get('/alumno/clases/:id', getAllStudentByMaestro);
 personalRouter.get('/teacher/stats/:id', getAllStatsByMaestro);
 personalRouter.get('/teacher/', getAllTeacher);
+personalRouter.get('/teacher/active', getAllTeacherByStatus);
 personalRouter.get('/clases/:id', getAllStudentClases);
 personalRouter.get('/matricula/check/:matricula', matriculaExists);
 personalRouter.get('/recepcionista/', getAllRecepcionista);

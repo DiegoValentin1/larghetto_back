@@ -100,6 +100,15 @@ const findAllTeacher = async () => {
     return await query(sql, []);
 }
 
+const findAllTeacherByStatus = async () => {
+    const sql = `SELECT pe.*,us.campus, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
+    FROM personal pe 
+    join users us on us.personal_id=pe.id
+    join maestro mae on mae.user_id=us.id
+    WHERE us.role='MAESTRO' AND us.status=1`;
+    return await query(sql, []);
+}
+
 const findAllInstrumento = async () => {
     const sql = `SELECT * FROM instrumento`;
     return await query(sql, []);
@@ -318,4 +327,4 @@ const checkMatricula = async (matricula) => {
     return respuesta[0];
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo};
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus};
