@@ -49,7 +49,7 @@ const findAllAlumnoMensualidades = async () => {
     const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
     JOIN promocion pro on pro.id=alu.promocion_id
     JOIN users us on us.id=alu.user_id
-    WHERE alu.estado!=0`;
+    WHERE alu.estado!=0 AND alu.estado!=7`;
     const response = await query(sql, []);
     const sql2 = `SELECT 
     SUM(
@@ -75,7 +75,7 @@ const findAllAlumnoMensualidadesCampus = async (campus) => {
     const sql = `select sum(alu.mensualidad - (alu.mensualidad * (pro.descuento/100))) as total_mensualidad from alumno alu 
     JOIN promocion pro on pro.id=alu.promocion_id
     JOIN users us on us.id=alu.user_id
-    WHERE alu.estado!=0 AND campus=?`;
+    WHERE alu.estado!=0 AND alu.estado!=7 AND campus=?`;
     const response = await query(sql, [campus]);
     const sql2 = `SELECT 
     SUM(

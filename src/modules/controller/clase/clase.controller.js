@@ -1,13 +1,27 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllByMaestro, findHorarioAllByMaestro} = require('./clase.gateway');
+const {findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus} = require('./clase.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 const getClasesByMaestro = async(req, res=Response)=>{
     try {
         const {id} = req.params;
         const promocion = await findAllByMaestro(id);
+        console.log(promocion);
+        res.status(200).json(promocion);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+
+const getClasesByMaestroCampus = async(req, res=Response)=>{
+    try {
+        const {id, campus} = req.params;
+        const promocion = await findAllByMaestroCampus(id, campus);
         console.log(promocion);
         res.status(200).json(promocion);
     } catch (error) {
@@ -91,6 +105,7 @@ const getHorarioByMaestro = async(req, res=Response)=>{
 const claseRouter = Router();
 
 claseRouter.get('/:id', getClasesByMaestro);
+claseRouter.get('/maestro/:id/:campus', getClasesByMaestroCampus);
 claseRouter.get('/maestro/:id', getHorarioByMaestro);
 // claseRouter.get('/:id',[auth, checkRoles(['ADMIN'])], getById);
 // claseRouter.post('/', insert);

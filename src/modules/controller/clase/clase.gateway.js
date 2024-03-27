@@ -14,10 +14,30 @@ JOIN personal pea ON pea.id = usa.personal_id
 JOIN users usm ON usm.id = alc.id_maestro
 JOIN personal pem ON pem.id = usm.personal_id
 JOIN instrumento ins ON ins.id=alc.id_instrumento
-WHERE alc.id_maestro = ?
+WHERE alc.id_maestro = ? AND alu.estado!=0 AND usa.campus=usm.campus AND usm.role="MAESTRO" AND usa.role="ALUMNO"
 GROUP BY alc.dia, alc.hora, ins.instrumento
 ORDER BY alc.dia;`;
     return await query(sql, [id]);
+}
+
+const findAllByMaestroCampus = async (id, campus) => {
+    if (!id) throw Error("Missing fields");
+    const sql = `SELECT alc.dia, 
+    alc.hora, 
+    ins.instrumento,
+    GROUP_CONCAT(DISTINCT pea.name SEPARATOR ', ') AS alumnos
+FROM alumno_clases alc
+JOIN maestro ma ON ma.user_id = alc.id_maestro
+JOIN alumno alu ON alu.user_id = alc.id_alumno
+JOIN users usa ON usa.id = alc.id_alumno
+JOIN personal pea ON pea.id = usa.personal_id
+JOIN users usm ON usm.id = alc.id_maestro
+JOIN personal pem ON pem.id = usm.personal_id
+JOIN instrumento ins ON ins.id=alc.id_instrumento
+WHERE alc.id_maestro = ? AND alu.estado!=0 AND alu.estado!=7 AND usa.campus=usm.campus AND usm.role="MAESTRO" AND usa.role="ALUMNO" AND usm.campus=? AND usa.campus=?
+GROUP BY alc.dia, alc.hora, ins.instrumento
+ORDER BY alc.dia;`;
+    return await query(sql, [id, campus, campus]);
 }
 
 const findHorarioAllByMaestro = async (id) => {
@@ -62,4 +82,4 @@ const findHorarioAllByMaestro = async (id) => {
 //     return{ idDeleted:id };
 // }
 
-module.exports = { findAllByMaestro, findHorarioAllByMaestro };
+module.exports = { findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus };
