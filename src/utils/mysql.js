@@ -2,8 +2,8 @@ const mysql = require('mysql2');
 require('dotenv').config();
 const WebSocket = require('ws');
 
-// const wss = new WebSocket.Server({ host: "104.237.128.187", port: 8080 });
-const wss = new WebSocket.Server({ host: "localhost", port: 8080 });
+const wss = new WebSocket.Server({ host: "104.237.128.187", port: 8080 });
+// const wss = new WebSocket.Server({ host: "localhost", port: 8080 });
 
 wss.on('connection', function connection(ws) {
   {
