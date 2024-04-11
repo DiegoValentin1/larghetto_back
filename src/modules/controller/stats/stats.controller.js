@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus } = require('./stats.gateway');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantesCampus, findAllAlumnoFaltantes } = require('./stats.gateway');
 
 const getAllTotal = async(req, res=Response)=>{
     try {
@@ -81,6 +81,18 @@ const getAllAlumnoPagos = async(req, res=Response)=>{
     }
 }
 
+const getLastThree = async(req, res=Response)=>{
+    try {
+        const {campus} = req.params;
+        const stat = await lastThree(campus);
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
 const getAlumnoPagosMes = async(req, res=Response)=>{
     try {
         const stat = await findAlumnoPagosMes();
@@ -151,6 +163,32 @@ const getAlumnoTotalInscripcionesCampus = async(req, res=Response)=>{
     }
 }
 
+const getAlumnoTotalfaltantesCampus = async(req, res=Response)=>{
+    try {
+        const {campus} = req.params;
+        const stat = await findAllAlumnoFaltantesCampus(campus);
+        console.log(stat, "lolll");
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAlumnoTotalFaltantes = async(req, res=Response)=>{
+    try {
+        
+        const stat = await findAllAlumnoFaltantes();
+        console.log(stat);
+        res.status(200).json(stat);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
 
 
 const statsRouter = Router();
@@ -163,8 +201,11 @@ statsRouter.get('/actual/', getAllActual);
 statsRouter.get('/save/', saveActual);
 /*-------*/
 statsRouter.get('/pagos/:id', getAllAlumnoPagos);
+statsRouter.get('/last/:campus', getLastThree);
 statsRouter.get('/pagos/suma/total', getAlumnoPagosMes);
 statsRouter.get('/pagos/suma/:campus', getAlumnoPagosMesCampus);
+statsRouter.get('/pagos/falta/total', getAlumnoTotalFaltantes);
+statsRouter.get('/pagos/falta/:campus', getAlumnoTotalfaltantesCampus);
 statsRouter.get('/pagos/total/mensualidades', getAlumnoTotalMensualidades);
 statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoTotalMensualidadesCampus);
 statsRouter.get('/pagos/total/inscripciones', getAlumnoTotalInscripciones);

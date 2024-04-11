@@ -67,8 +67,8 @@ JOIN promocion pro on pro.id=alu.promocion_id
 WHERE 
     fecha = DATE_FORMAT(curdate(), '%Y-%m-01');`;
     const response2 = await query(sql2, []);
-        const total_mensualidad = response[0].total_mensualidad-response2[0].total_pagado_resta;
-    return [{total_mensualidad}];
+    const total_mensualidad = response[0].total_mensualidad - response2[0].total_pagado_resta;
+    return [{ total_mensualidad }];
 }
 
 const findAllAlumnoMensualidadesCampus = async (campus) => {
@@ -93,8 +93,8 @@ JOIN promocion pro on pro.id=alu.promocion_id
 WHERE 
     fecha = DATE_FORMAT(curdate(), '%Y-%m-01') AND campus=?;`;
     const response2 = await query(sql2, [campus]);
-        const total_mensualidad = response[0].total_mensualidad-response2[0].total_pagado_resta;
-    return [{total_mensualidad}];
+    const total_mensualidad = response[0].total_mensualidad - response2[0].total_pagado_resta;
+    return [{ total_mensualidad }];
 }
 
 const findAllAlumnoInscripciones = async () => {
@@ -150,4 +150,40 @@ WHERE
     return await query(sql, [campus]);
 }
 
-module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus };
+
+const lastThree = async (campus) => {
+    const sql = `SELECT us.campus, pe.name, MAX(alu.proximo_pago) AS proximo_pago
+    FROM alumno_asistencias als
+    JOIN users us ON us.id = als.id_alumno
+    JOIN personal pe ON pe.id = us.personal_id
+    JOIN alumno alu ON alu.user_id = us.id
+    WHERE us.campus=?
+    GROUP BY pe.name, us.campus
+    ORDER BY MAX(als.id) DESC
+    LIMIT 3;`;
+    return await query(sql, [campus]);
+}
+
+const findAllAlumnoFaltantesCampus = async (campus) => {
+    const sql = `SELECT 
+    sum(alu.mensualidad - (alu.mensualidad * pro.descuento / 100)) as lol
+FROM alumno alu
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro ON pro.id = alu.promocion_id
+WHERE us.campus=? AND alu.proximo_pago < CURDATE() AND alu.estado!=0;`;
+    return await query(sql,[campus]);
+}
+
+const findAllAlumnoFaltantes = async () => {
+    const sql = `SELECT 
+    sum(alu.mensualidad - (alu.mensualidad * pro.descuento / 100)) as lol
+FROM alumno alu
+JOIN users us ON us.id = alu.user_id
+JOIN promocion pro ON pro.id = alu.promocion_id
+WHERE alu.proximo_pago < CURDATE() AND alu.estado!=0;`;
+    const response =  await query(sql,[]);
+    console.log(response);
+    return response;
+}
+
+module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantes, findAllAlumnoFaltantesCampus };
