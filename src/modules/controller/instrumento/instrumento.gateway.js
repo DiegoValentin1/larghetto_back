@@ -33,7 +33,7 @@ const findAlumnosClasesCampus = async(campus)=>{
     const sql = `SELECT count(*) from alumno_clases alc 
 	JOIN alumno alu on alu.user_id=alc.id_alumno
     JOIN users us on us.id=alc.id_alumno
-    WHERE us.campus=? AND alu.estado!=0;`;
+    WHERE us.campus=? AND alu.estado!=0 AND alu.estado!=7;`;
 
     return await query(sql, [campus]);
 }
