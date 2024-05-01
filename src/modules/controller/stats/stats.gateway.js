@@ -170,7 +170,7 @@ const findAllAlumnoFaltantesCampus = async (campus) => {
 FROM alumno alu
 JOIN users us ON us.id = alu.user_id
 JOIN promocion pro ON pro.id = alu.promocion_id
-WHERE us.campus=? AND alu.proximo_pago < CURDATE() AND alu.estado!=0;`;
+WHERE us.campus=? AND alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
     return await query(sql,[campus]);
 }
 
@@ -180,7 +180,7 @@ const findAllAlumnoFaltantes = async () => {
 FROM alumno alu
 JOIN users us ON us.id = alu.user_id
 JOIN promocion pro ON pro.id = alu.promocion_id
-WHERE alu.proximo_pago < CURDATE() AND alu.estado!=0;`;
+WHERE alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
     const response =  await query(sql,[]);
     console.log(response);
     return response;
