@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoMensualidades, findAllAlumnoMensualidadesCampus, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantesCampus, findAllAlumnoFaltantes } = require('./stats.gateway');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantesCampus, findAllAlumnoFaltantes, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoMensualidadesSumaFaltaMasPagos } = require('./stats.gateway');
 
 const getAllTotal = async(req, res=Response)=>{
     try {
@@ -118,7 +118,7 @@ const getAlumnoPagosMesCampus = async(req, res=Response)=>{
 
 const getAlumnoTotalMensualidades = async(req, res=Response)=>{
     try {
-        const stat = await findAllAlumnoMensualidades();
+        const stat = await findAllAlumnoMensualidadesSumaFaltaMasPagos();
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
@@ -130,7 +130,7 @@ const getAlumnoTotalMensualidades = async(req, res=Response)=>{
 const getAlumnoTotalMensualidadesCampus = async(req, res=Response)=>{
     try {
         const {campus} = req.params;
-        const stat = await findAllAlumnoMensualidadesCampus(campus);
+        const stat = await findAllAlumnoMensualidadesCampusSumaFaltaMasPagos(campus);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
