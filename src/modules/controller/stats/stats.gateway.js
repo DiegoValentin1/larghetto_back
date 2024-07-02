@@ -27,6 +27,12 @@ const findAllCuautla = async () => {
     const sql = `SELECT campus, fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE campus='cuautla' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
     return await query(sql, []);
 }
+const findAllCdmx = async () => {
+    const sql = `SELECT campus, fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE campus='CDMX' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
+    const response = await query(sql, []);
+    console.log(response);
+    return response;
+}
 
 const findAllActual = async () => {
     const sql = `SELECT us.campus, count(alc.id) as total FROM alumno_clases as alc
@@ -260,4 +266,4 @@ WHERE alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
     return response;
 }
 
-module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidadesSumaFaltaMasPagos, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantes, findAllAlumnoFaltantesCampus };
+module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllCdmx, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidadesSumaFaltaMasPagos, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantes, findAllAlumnoFaltantesCampus };
