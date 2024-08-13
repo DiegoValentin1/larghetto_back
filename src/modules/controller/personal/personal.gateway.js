@@ -10,7 +10,9 @@ const findAll = async () => {
 const findAllStudentByMaestro = async (id) => {
     const sql = `SELECT pe.name FROM alumno_clases ac
     JOIN users us on us.id=ac.id_alumno
-    JOIN personal pe on pe.id=us.personal_id WHERE ac.id_maestro=?`;
+    JOIN personal pe on pe.id=us.personal_id
+    JOIN alumno alu on alu.user_id=ac.id_alumno
+    WHERE ac.id_maestro=? AND alu.estado!=0`;
     return await query(sql, [id]);
 }
 
