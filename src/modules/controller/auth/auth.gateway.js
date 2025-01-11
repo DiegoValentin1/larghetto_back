@@ -43,7 +43,7 @@ const changePassword = async (user) => {
     const hashedPassword = await hashPassword(newpassword);
     console.log(existUser);
     if (
-        await validatePassword(oldpassword, existUser[0].password) || true
+        await validatePassword(oldpassword, existUser[0].password)
     ) {
         const sql = `UPDATE users SET password=? WHERE email=?`;
         await query(sql, [hashedPassword,email]);

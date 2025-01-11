@@ -282,6 +282,18 @@ const remove = async (id) => {
 
     return { idDeleted: id };
 }
+const removeEmpleado = async (id) => {
+    if (Number.isNaN(id)) throw Error("Wrong Type");
+    if (!id) throw Error('Missing Fields');
+    const sql1 = `SELECT personal_id FROM users WHERE id=?`;
+    const sql2 = `DELETE FROM users WHERE id=?`;
+    const sql3 = `DELETE FROM personal WHERE id=?`;
+    const idPersonal = (await query(sql1, [id]))[0].personal_id;
+    await query(sql2, [id]);
+    await query(sql3, [idPersonal]);
+
+    return { idDeleted: id, idPersonal: idPersonal };
+}
 
 const removeRepo = async (id) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
@@ -329,4 +341,4 @@ const checkMatricula = async (matricula) => {
     return respuesta[0];
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus};
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado};

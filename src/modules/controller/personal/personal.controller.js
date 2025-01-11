@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -320,6 +320,19 @@ const actualizeTeacher = async (req, res = Response) => {
        res.status(400).json({ message });
     }
  }
+ const eliminateEmpleado = async (req, res = Response) => {
+    try {
+       const{id} =req.params;
+       const {empleado} = req.body;
+       await insertLog({empleado, accion:'Usuario eliminado'});
+       const person = await removeEmpleado(id);
+       res.status(200).json(person);
+    } catch (error) {
+       console.log(error);
+       const message = validateError(error);
+       res.status(400).json({ message });
+    }
+ }
 
  const eliminateRepo = async (req, res = Response) => {
     try {
@@ -417,6 +430,7 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.post('/', insert);
 // personalRouter.put('/', actualize);
 personalRouter.delete('/:id',eliminate);
+personalRouter.delete('/empleado/:id',eliminateEmpleado);
 personalRouter.delete('/repo/:id',eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',eliminateStudent);
