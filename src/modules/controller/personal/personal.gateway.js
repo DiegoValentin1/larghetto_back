@@ -131,18 +131,24 @@ const saveStudent = async (person) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion) throw Error("Missing fields");
     const nombres = person.name.toUpperCase().split(" ");
-    var matricula
-    if (nombres.length == 1) {
-        matricula = `L${nombres[0].substring(0, 2)}${person.fechaNacimiento.substring(2, 4)}${person.fechaNacimiento.substring(5, 7)}`;
-    } else if (nombres.length == 2) {
-        matricula = `L${nombres[1].substring(0, 2)}${person.fechaNacimiento.substring(2, 4)}${person.fechaNacimiento.substring(5, 7)}`;
-    } else if (nombres.length == 3) {
-        matricula = `L${nombres[1].substring(0, 1)}${nombres[2].substring(0, 1)}${person.fechaNacimiento.substring(2, 4)}${person.fechaNacimiento.substring(5, 7)}`;
-    } else if (nombres.length == 4) {
-        matricula = `L${nombres[2].substring(0, 1)}${nombres[3].substring(0, 1)}${person.fechaNacimiento.substring(2, 4)}${person.fechaNacimiento.substring(5, 7)}`;
-    } else if (nombres.length > 4) {
-        matricula = `L${nombres[2].substring(0, 1)}${nombres[nombres.length - 1].substring(0, 1)}${person.fechaNacimiento.substring(2, 4)}${person.fechaNacimiento.substring(5, 7)}`;
+    var matricula;
+    const cleanNames = nombres.filter(name => name.trim() !== "");
+
+    let initials;
+    if (cleanNames.length >= 2) {
+        const lastNameIndex = cleanNames.length - 1;
+        const secondLastNameIndex = cleanNames.length - 2;
+        initials = cleanNames[secondLastNameIndex].substring(0, 1) + cleanNames[lastNameIndex].substring(0, 1);
+    } else if (cleanNames.length === 1) {
+        initials = cleanNames[0].substring(0, 2);
+    } else {
+        throw new Error("Insufficient names to generate matricula");
     }
+
+    const year = person.fechaNacimiento.substring(2, 4);
+    const month = person.fechaNacimiento.substring(5, 7);
+    const randomLetter = generateRandomLetter();
+    matricula = `L${initials}${year}${month}${randomLetter}`;
 
     const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const respuesta = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.promocion, person.observaciones, matricula, person.campus, person.nombreMadre || 'N/A', person.nombrePadre || 'N/A', person.padreTelefono || 'N/A', person.madreTelefono || 'N/A', person.inscripcion, person.fechaInicio]);
@@ -341,4 +347,10 @@ const checkMatricula = async (matricula) => {
     return respuesta[0];
 }
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado};
+
+const generateRandomLetter = () => {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude I, O, Q
+    return letters.charAt(Math.floor(Math.random() * letters.length));
+};
+
+module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado };

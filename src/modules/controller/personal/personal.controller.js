@@ -435,5 +435,4 @@ personalRouter.delete('/repo/:id',eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);
-
 module.exports = {personalRouter, };
