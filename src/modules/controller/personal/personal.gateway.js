@@ -138,9 +138,9 @@ const saveStudent = async (person) => {
     if (cleanNames.length >= 2) {
         const lastNameIndex = cleanNames.length - 1;
         const secondLastNameIndex = cleanNames.length - 2;
-        initials = cleanNames[secondLastNameIndex].substring(0, 1) + cleanNames[lastNameIndex].substring(0, 1);
+        initials = removeAccents(cleanNames[secondLastNameIndex].substring(0, 1)) + removeAccents(cleanNames[lastNameIndex].substring(0, 1));
     } else if (cleanNames.length === 1) {
-        initials = cleanNames[0].substring(0, 2);
+        initials = removeAccents(cleanNames[0].substring(0, 2));
     } else {
         throw new Error("Insufficient names to generate matricula");
     }
@@ -351,6 +351,10 @@ const checkMatricula = async (matricula) => {
 const generateRandomLetter = () => {
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude I, O, Q
     return letters.charAt(Math.floor(Math.random() * letters.length));
+};
+
+const removeAccents = (str) => {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
 module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado };
