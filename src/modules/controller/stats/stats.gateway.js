@@ -280,7 +280,7 @@ const findHistoricoAlumnos = async (year, campus) => {
         WHERE YEAR(fecha) = ?
     `;
 
-    const params = [year || new Date().getFullYear()];
+    const params = [parseInt(year) || new Date().getFullYear()];
 
     if (campus) {
         sql += ' AND campus = ?';
@@ -294,6 +294,8 @@ const findHistoricoAlumnos = async (year, campus) => {
 };
 
 const findHistoricoPagos = async (year, month, campus) => {
+    console.log('🔍 findHistoricoPagos llamada con:', {year, month, campus});
+
     let sql = `
         SELECT
             MONTH(alp.fecha) as mes,
@@ -316,11 +318,13 @@ const findHistoricoPagos = async (year, month, campus) => {
         WHERE YEAR(alp.fecha) = ?
     `;
 
-    const params = [year || new Date().getFullYear()];
+    const yearParam = parseInt(year) || new Date().getFullYear();
+    console.log('📅 Año parseado:', yearParam);
+    const params = [yearParam];
 
     if (month) {
         sql += ' AND MONTH(alp.fecha) = ?';
-        params.push(month);
+        params.push(parseInt(month));
     }
 
     if (campus) {
@@ -330,7 +334,10 @@ const findHistoricoPagos = async (year, month, campus) => {
 
     sql += ' GROUP BY MONTH(alp.fecha), MONTHNAME(alp.fecha) ORDER BY mes ASC';
 
+    console.log('📊 SQL:', sql.substring(0, 100) + '...');
+    console.log('📊 Params:', params);
     const result = await query(sql, params);
+    console.log('✅ Resultado query:', result?.length, 'registros');
     return result;
 };
 

@@ -216,12 +216,25 @@ const getHistoricoAlumnos = async (req, res = Response) => {
 }
 
 const getHistoricoPagos = async (req, res = Response) => {
+    console.log('🎯 CONTROLLER: getHistoricoPagos INICIADO');
+    console.log('🎯 Query params raw:', req.query);
     try {
         const {year, month, campus} = req.query;
+        console.log('🎯 Params extraidos:', {year, month, campus, type_year: typeof year});
+
+        console.log('🎯 Llamando a findHistoricoPagos...');
         const historico = await findHistoricoPagos(year, month, campus);
+        console.log('🎯 RETORNADO de findHistoricoPagos:', {
+            length: historico?.length,
+            isArray: Array.isArray(historico),
+            primerRegistro: historico?.[0]
+        });
+
+        console.log('🎯 Enviando respuesta...');
         res.status(200).json(historico);
+        console.log('🎯 Respuesta enviada ✅');
     } catch (error) {
-        console.log(error);
+        console.log('❌❌❌ ERROR en getHistoricoPagos:', error.message, error.stack);
         const message = validateError(error);
         res.status(400).json({message});
     }
@@ -237,8 +250,11 @@ statsRouter.get('/cdmx/', getAllCdmx);
 statsRouter.get('/actual/', getAllActual);
 statsRouter.get('/save/', saveActual);
 /*-------*/
-statsRouter.get('/pagos/:id', getAllAlumnoPagos);
-statsRouter.get('/last/:campus', getLastThree);
+// IMPORTANTE: Rutas específicas PRIMERO, rutas con parámetros DESPUÉS
+// Reportes históricos (específicas)
+statsRouter.get('/alumnos/historico', getHistoricoAlumnos);
+statsRouter.get('/pagos/historico', getHistoricoPagos);
+// Rutas con parámetros (genéricas)
 statsRouter.get('/pagos/suma/total', getAlumnoPagosMes);
 statsRouter.get('/pagos/suma/:campus', getAlumnoPagosMesCampus);
 statsRouter.get('/pagos/falta/total', getAlumnoTotalFaltantes);
@@ -247,8 +263,7 @@ statsRouter.get('/pagos/total/mensualidades', getAlumnoTotalMensualidades);
 statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoTotalMensualidadesCampus);
 statsRouter.get('/pagos/total/inscripciones', getAlumnoTotalInscripciones);
 statsRouter.get('/pagos/total/inscripciones/:campus', getAlumnoTotalInscripcionesCampus);
-// Reportes históricos
-statsRouter.get('/alumnos/historico', getHistoricoAlumnos);
-statsRouter.get('/pagos/historico', getHistoricoPagos);
+statsRouter.get('/last/:campus', getLastThree);
+statsRouter.get('/pagos/:id', getAllAlumnoPagos); // Esta debe ir AL FINAL
 
 module.exports = {statsRouter, };
