@@ -300,21 +300,14 @@ const findHistoricoPagos = async (year, month, campus) => {
         SELECT
             MONTH(alp.fecha) as mes,
             MONTHNAME(alp.fecha) as nombre_mes,
-            SUM(CASE
-                WHEN alp.tipo = 1 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100)))
-                WHEN alp.tipo = 2 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 0.95
-                WHEN alp.tipo = 3 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 1.10
-                ELSE 0
-            END) as total_mes,
-            SUM(CASE WHEN alp.tipo = 1 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) ELSE 0 END) as pagos_normales,
-            SUM(CASE WHEN alp.tipo = 2 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 0.95 ELSE 0 END) as pagos_descuento,
-            SUM(CASE WHEN alp.tipo = 3 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 1.10 ELSE 0 END) as pagos_recargo,
+            SUM(alp.monto_registrado) as total_mes,
+            SUM(CASE WHEN alp.tipo = 1 THEN alp.monto_registrado ELSE 0 END) as pagos_normales,
+            SUM(CASE WHEN alp.tipo = 2 THEN alp.monto_registrado ELSE 0 END) as pagos_descuento,
+            SUM(CASE WHEN alp.tipo = 3 THEN alp.monto_registrado ELSE 0 END) as pagos_recargo,
             COUNT(*) as total_transacciones,
             COUNT(DISTINCT alp.alumno_id) as alumnos_que_pagaron
         FROM alumno_pagos alp
-        JOIN alumno alu ON alu.user_id = alp.alumno_id
-        LEFT JOIN promocion pro ON pro.id = alu.promocion_id
-        JOIN users us ON us.id = alu.user_id
+        JOIN users us ON us.id = alp.alumno_id
         WHERE YEAR(alp.fecha) = ?
     `;
 

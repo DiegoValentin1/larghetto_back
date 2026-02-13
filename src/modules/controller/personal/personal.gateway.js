@@ -196,8 +196,27 @@ const updateStudent = async (person) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
     });
     await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
+
+    // Obtener datos del alumno para calcular montos
+    const alumnoData = await query(`
+        SELECT a.mensualidad, COALESCE(p.descuento, 0) as descuento
+        FROM alumno a
+        LEFT JOIN promocion p ON p.id = a.promocion_id
+        WHERE a.user_id = ?
+    `, [person.user_id]);
+
+    const mensualidad = alumnoData[0]?.mensualidad || 0;
+    const descuento_promo = alumnoData[0]?.descuento || 0;
+    const mensualidad_real = mensualidad - (mensualidad * descuento_promo / 100);
+
     person.pagos && await person.pagos.forEach(async (element) => {
-        await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo) values(?,?,?)`, [person.user_id, element.fecha, element.tipo])
+        // Calcular monto según tipo de pago
+        let monto_registrado = mensualidad_real;
+        if (element.tipo === 2) monto_registrado = mensualidad_real * 0.95; // Descuento 5%
+        if (element.tipo === 3) monto_registrado = mensualidad_real * 1.10; // Recargo 10%
+
+        await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
+            [person.user_id, element.fecha, element.tipo, monto_registrado])
     });
     if (person.pagos.length > 0) {
         const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha.fecha).getTime())));
