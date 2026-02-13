@@ -266,4 +266,94 @@ WHERE alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
     return response;
 }
 
-module.exports = { findAllTotal, findAllCentro, findAllCuautla, findAllCdmx, findAllBuga, findAllActual, guardarActual, findAllAlumnoPagos, insertLog, findAlumnoPagosMes, findAlumnoPagosMesCampus, findAllAlumnoMensualidadesSumaFaltaMasPagos, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantes, findAllAlumnoFaltantesCampus };
+// ========================================
+// REPORTES HISTÓRICOS
+// ========================================
+
+const findHistoricoAlumnos = async (year, campus) => {
+    let sql = `
+        SELECT
+            fecha,
+            campus,
+            total
+        FROM registro_alumnos
+        WHERE YEAR(fecha) = ?
+    `;
+
+    const params = [year || new Date().getFullYear()];
+
+    if (campus) {
+        sql += ' AND campus = ?';
+        params.push(campus);
+    }
+
+    sql += ' ORDER BY fecha ASC';
+
+    const result = await query(sql, params);
+    return result;
+};
+
+const findHistoricoPagos = async (year, month, campus) => {
+    let sql = `
+        SELECT
+            MONTH(alp.fecha) as mes,
+            MONTHNAME(alp.fecha) as nombre_mes,
+            SUM(CASE
+                WHEN alp.tipo = 1 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100)))
+                WHEN alp.tipo = 2 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 0.95
+                WHEN alp.tipo = 3 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 1.10
+                ELSE 0
+            END) as total_mes,
+            SUM(CASE WHEN alp.tipo = 1 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) ELSE 0 END) as pagos_normales,
+            SUM(CASE WHEN alp.tipo = 2 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 0.95 ELSE 0 END) as pagos_descuento,
+            SUM(CASE WHEN alp.tipo = 3 THEN (alu.mensualidad - (alu.mensualidad * (COALESCE(pro.descuento, 0) / 100))) * 1.10 ELSE 0 END) as pagos_recargo,
+            COUNT(*) as total_transacciones,
+            COUNT(DISTINCT alp.alumno_id) as alumnos_que_pagaron
+        FROM alumno_pagos alp
+        JOIN alumno alu ON alu.user_id = alp.alumno_id
+        LEFT JOIN promocion pro ON pro.id = alu.promocion_id
+        JOIN users us ON us.id = alu.user_id
+        WHERE YEAR(alp.fecha) = ?
+    `;
+
+    const params = [year || new Date().getFullYear()];
+
+    if (month) {
+        sql += ' AND MONTH(alp.fecha) = ?';
+        params.push(month);
+    }
+
+    if (campus) {
+        sql += ' AND us.campus = ?';
+        params.push(campus);
+    }
+
+    sql += ' GROUP BY MONTH(alp.fecha), MONTHNAME(alp.fecha) ORDER BY mes ASC';
+
+    const result = await query(sql, params);
+    return result;
+};
+
+module.exports = {
+    findAllTotal,
+    findAllCentro,
+    findAllCuautla,
+    findAllCdmx,
+    findAllBuga,
+    findAllActual,
+    guardarActual,
+    findAllAlumnoPagos,
+    insertLog,
+    findAlumnoPagosMes,
+    findAlumnoPagosMesCampus,
+    findAllAlumnoMensualidadesSumaFaltaMasPagos,
+    findAllAlumnoMensualidadesCampusSumaFaltaMasPagos,
+    findAllAlumnoInscripciones,
+    findAllAlumnoInscripcionesCampus,
+    lastThree,
+    findAllAlumnoFaltantes,
+    findAllAlumnoFaltantesCampus,
+    // Reportes históricos
+    findHistoricoAlumnos,
+    findHistoricoPagos
+};

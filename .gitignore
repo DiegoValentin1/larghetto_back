@@ -1,2 +1,19 @@
+# Dependencias
 node_modules/
+
+# Archivos subidos
 src/img/
+
+# Variables de entorno (NUNCA subir credenciales)
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

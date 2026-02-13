@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -401,6 +401,107 @@ const actualizeTeacher = async (req, res = Response) => {
     }
  }
 
+// ========================================
+// CONTROLADORES DE SOLICITUDES DE BAJA
+// ========================================
+
+const solicitarBajaAlumno = async (req, res = Response) => {
+   try {
+      const {alumno_id, motivo, empleado} = req.body;
+      const solicitante_id = req.token.id; // ID del usuario autenticado
+
+      await insertLog({empleado, accion: `Solicitud de baja para alumno ID ${alumno_id}`});
+
+      const solicitud = await createSolicitudBaja({alumno_id, solicitante_id, motivo});
+      res.status(201).json(solicitud);
+   } catch (error) {
+      console.log(error);
+      const message = validateError(error);
+      res.status(400).json({message});
+   }
+}
+
+const getSolicitudesBaja = async (req, res = Response) => {
+   try {
+      const {estado, campus} = req.query;
+      const solicitudes = await findSolicitudesBaja(estado, campus);
+      res.status(200).json(solicitudes);
+   } catch (error) {
+      console.log(error);
+      const message = validateError(error);
+      res.status(400).json({message});
+   }
+}
+
+const aprobarSolicitud = async (req, res = Response) => {
+   try {
+      const {id} = req.params;
+      const {respuesta, empleado} = req.body;
+      const aprobador_id = req.token.id; // ID del SUPER que aprueba
+
+      await insertLog({empleado, accion: `Solicitud de baja ${id} aprobada`});
+
+      const result = await aprobarSolicitudBaja({
+         solicitud_id: parseInt(id),
+         aprobador_id,
+         respuesta
+      });
+
+      res.status(200).json(result);
+   } catch (error) {
+      console.log(error);
+      const message = validateError(error);
+      res.status(400).json({message});
+   }
+}
+
+const rechazarSolicitud = async (req, res = Response) => {
+   try {
+      const {id} = req.params;
+      const {respuesta, empleado} = req.body;
+      const aprobador_id = req.token.id;
+
+      await insertLog({empleado, accion: `Solicitud de baja ${id} rechazada`});
+
+      const result = await rechazarSolicitudBaja({
+         solicitud_id: parseInt(id),
+         aprobador_id,
+         respuesta
+      });
+
+      res.status(200).json(result);
+   } catch (error) {
+      console.log(error);
+      const message = validateError(error);
+      res.status(400).json({message});
+   }
+}
+
+// ========================================
+// ELIMINACIÓN SEGURA DE MAESTROS
+// ========================================
+
+const deleteMaestroPermanente = async (req, res = Response) => {
+   try {
+      const {id} = req.params;
+      const {empleado} = req.body;
+
+      const result = await deleteMaestroSeguro(parseInt(id));
+
+      if (result.deleted) {
+         await insertLog({empleado, accion: 'Maestro eliminado permanentemente'});
+      } else {
+         await insertLog({empleado, accion: `Maestro inactivado (${result.registros_historicos} registros históricos)`});
+      }
+
+      res.status(200).json(result);
+   } catch (error) {
+      console.log(error);
+      const message = validateError(error);
+      res.status(400).json({message});
+   }
+}
+
 const personalRouter = Router();
 
 personalRouter.get('/', getAllStudent);
@@ -433,6 +534,16 @@ personalRouter.delete('/:id',eliminate);
 personalRouter.delete('/empleado/:id',eliminateEmpleado);
 personalRouter.delete('/repo/:id',eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
-personalRouter.put('/alumno/eliminar',eliminateStudent);
+personalRouter.put('/alumno/eliminar',[auth, checkRoles(['SUPER'])],eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);
+
+// Rutas de solicitudes de baja
+personalRouter.post('/alumno/solicitar-baja', [auth, checkRoles(['RECEPCION', 'ENCARGADO'])], solicitarBajaAlumno);
+personalRouter.get('/solicitudes-baja', [auth, checkRoles(['SUPER', 'ENCARGADO'])], getSolicitudesBaja);
+personalRouter.put('/solicitudes-baja/:id/aprobar', [auth, checkRoles(['SUPER'])], aprobarSolicitud);
+personalRouter.put('/solicitudes-baja/:id/rechazar', [auth, checkRoles(['SUPER'])], rechazarSolicitud);
+
+// Ruta de eliminación segura de maestros
+personalRouter.delete('/teacher/permanente/:id', [auth, checkRoles(['SUPER'])], deleteMaestroPermanente);
+
 module.exports = {personalRouter, };

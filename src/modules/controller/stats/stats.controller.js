@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantesCampus, findAllAlumnoFaltantes, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoMensualidadesSumaFaltaMasPagos, findAllCdmx } = require('./stats.gateway');
+const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual, guardarActual, findAllAlumnoPagos, findAlumnoPagosMesCampus, findAlumnoPagosMes, findAllAlumnoInscripciones, findAllAlumnoInscripcionesCampus, lastThree, findAllAlumnoFaltantesCampus, findAllAlumnoFaltantes, findAllAlumnoMensualidadesCampusSumaFaltaMasPagos, findAllAlumnoMensualidadesSumaFaltaMasPagos, findAllCdmx, findHistoricoAlumnos, findHistoricoPagos } = require('./stats.gateway');
 
 const getAllTotal = async(req, res=Response)=>{
     try {
@@ -199,7 +199,33 @@ const getAlumnoTotalFaltantes = async(req, res=Response)=>{
     }
 }
 
+// ========================================
+// CONTROLADORES DE REPORTES HISTÓRICOS
+// ========================================
 
+const getHistoricoAlumnos = async (req, res = Response) => {
+    try {
+        const {year, campus} = req.query;
+        const historico = await findHistoricoAlumnos(year, campus);
+        res.status(200).json(historico);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getHistoricoPagos = async (req, res = Response) => {
+    try {
+        const {year, month, campus} = req.query;
+        const historico = await findHistoricoPagos(year, month, campus);
+        res.status(200).json(historico);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
 
 const statsRouter = Router();
 
@@ -221,5 +247,8 @@ statsRouter.get('/pagos/total/mensualidades', getAlumnoTotalMensualidades);
 statsRouter.get('/pagos/total/mensualidades/:campus', getAlumnoTotalMensualidadesCampus);
 statsRouter.get('/pagos/total/inscripciones', getAlumnoTotalInscripciones);
 statsRouter.get('/pagos/total/inscripciones/:campus', getAlumnoTotalInscripcionesCampus);
+// Reportes históricos
+statsRouter.get('/alumnos/historico', getHistoricoAlumnos);
+statsRouter.get('/pagos/historico', getHistoricoPagos);
 
 module.exports = {statsRouter, };

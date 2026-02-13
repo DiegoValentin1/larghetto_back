@@ -357,4 +357,247 @@ const removeAccents = (str) => {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
-module.exports = { findAllStudent, findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado };
+// ========================================
+// FUNCIONES DE SOLICITUDES DE BAJA
+// ========================================
+
+const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}) => {
+    if (Number.isNaN(alumno_id) || Number.isNaN(solicitante_id)) throw Error("Wrong Type");
+    if (!alumno_id || !solicitante_id || !motivo) throw Error('Missing Fields');
+
+    const sql = `INSERT INTO solicitudes_baja (alumno_id, solicitante_id, motivo) VALUES (?, ?, ?)`;
+    const result = await query(sql, [alumno_id, solicitante_id, motivo]);
+
+    return { id: result.insertId, alumno_id, solicitante_id, motivo };
+};
+
+const findSolicitudesBaja = async (estado, campus) => {
+    let sql = `
+        SELECT
+            sb.id,
+            sb.alumno_id,
+            sb.solicitante_id,
+            sb.fecha_solicitud,
+            sb.estado,
+            sb.motivo,
+            sb.respuesta,
+            sb.fecha_respuesta,
+            sb.aprobador_id,
+            pa.name as alumno_nombre,
+            pa.id as alumno_personal_id,
+            al.matricula,
+            ps.name as solicitante_nombre,
+            pap.name as aprobador_nombre,
+            us.campus
+        FROM solicitudes_baja sb
+        JOIN users us ON us.id = sb.alumno_id
+        JOIN personal pa ON pa.id = us.personal_id
+        JOIN alumno al ON al.user_id = us.id
+        JOIN personal ps ON ps.id = sb.solicitante_id
+        LEFT JOIN users usa ON usa.id = sb.aprobador_id
+        LEFT JOIN personal pap ON pap.id = usa.personal_id
+    `;
+
+    const conditions = [];
+    const params = [];
+
+    if (estado) {
+        conditions.push('sb.estado = ?');
+        params.push(estado);
+    }
+
+    if (campus) {
+        conditions.push('us.campus = ?');
+        params.push(campus);
+    }
+
+    if (conditions.length > 0) {
+        sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY sb.fecha_solicitud DESC';
+
+    const result = await query(sql, params);
+    return result;
+};
+
+const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => {
+    if (Number.isNaN(solicitud_id) || Number.isNaN(aprobador_id)) throw Error("Wrong Type");
+    if (!solicitud_id || !aprobador_id) throw Error('Missing Fields');
+
+    // 1. Obtener el alumno_id de la solicitud
+    const sqlGet = `SELECT alumno_id FROM solicitudes_baja WHERE id = ?`;
+    const solicitud = await query(sqlGet, [solicitud_id]);
+
+    if (!solicitud || solicitud.length === 0) throw Error('Solicitud no encontrada');
+
+    const alumno_user_id = solicitud[0].alumno_id;
+
+    // 2. Actualizar la solicitud a APROBADA
+    const sqlUpdate = `
+        UPDATE solicitudes_baja
+        SET estado = 'APROBADA',
+            respuesta = ?,
+            fecha_respuesta = NOW(),
+            aprobador_id = ?
+        WHERE id = ?
+    `;
+    await query(sqlUpdate, [respuesta || 'Aprobado', aprobador_id, solicitud_id]);
+
+    // 3. Obtener el id de la tabla alumno
+    const sqlGetAlumnoId = `SELECT id FROM alumno WHERE user_id = ?`;
+    const alumnoData = await query(sqlGetAlumnoId, [alumno_user_id]);
+
+    if (!alumnoData || alumnoData.length === 0) throw Error('Alumno no encontrado');
+
+    const alumno_id = alumnoData[0].id;
+
+    // 4. IMPORTANTE: Inactivar al alumno (estado = 0)
+    const sqlInactivar = `UPDATE alumno SET estado = 0 WHERE id = ?`;
+    await query(sqlInactivar, [alumno_id]);
+
+    return {
+        solicitud_id,
+        aprobador_id,
+        alumno_id,
+        message: 'Solicitud aprobada y alumno dado de baja'
+    };
+};
+
+const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => {
+    if (Number.isNaN(solicitud_id) || Number.isNaN(aprobador_id)) throw Error("Wrong Type");
+    if (!solicitud_id || !aprobador_id || !respuesta) throw Error('Missing Fields');
+
+    const sql = `
+        UPDATE solicitudes_baja
+        SET estado = 'RECHAZADA',
+            respuesta = ?,
+            fecha_respuesta = NOW(),
+            aprobador_id = ?
+        WHERE id = ?
+    `;
+    await query(sql, [respuesta, aprobador_id, solicitud_id]);
+
+    return { solicitud_id, aprobador_id, message: 'Solicitud rechazada' };
+};
+
+// ========================================
+// ELIMINACIÓN SEGURA DE MAESTROS
+// ========================================
+
+const deleteMaestroSeguro = async (user_id) => {
+    if (Number.isNaN(user_id)) throw Error("Wrong Type");
+    if (!user_id) throw Error('Missing Fields');
+
+    // PASO 1: Verificar dependencias (historial académico)
+    const checks = [
+        {
+            query: 'SELECT COUNT(*) as count FROM alumno_clases WHERE id_maestro = ?',
+            label: 'clases asignadas'
+        },
+        {
+            query: 'SELECT COUNT(*) as count FROM maestro_repo WHERE id_maestro = ?',
+            label: 'reposiciones registradas'
+        },
+        {
+            query: 'SELECT COUNT(*) as count FROM alumno_repo WHERE maestro_id = ?',
+            label: 'reposiciones de alumnos'
+        },
+        {
+            query: 'SELECT COUNT(*) as count FROM maestro_descuentos WHERE id_maestro = ?',
+            label: 'descuentos en nómina'
+        },
+        {
+            query: 'SELECT COUNT(*) as count FROM maestro_talleres WHERE id_maestro = ?',
+            label: 'talleres impartidos'
+        }
+    ];
+
+    let totalRegistros = 0;
+    const detalles = [];
+
+    for (const check of checks) {
+        const result = await query(check.query, [user_id]);
+        const count = result[0].count;
+        if (count > 0) {
+            totalRegistros += count;
+            detalles.push(`${count} ${check.label}`);
+        }
+    }
+
+    // PASO 2: Decidir acción
+    if (totalRegistros > 0) {
+        // Tiene historial → Solo inactivar
+        const sqlInactivar = `UPDATE users SET status = 0 WHERE id = ?`;
+        await query(sqlInactivar, [user_id]);
+
+        return {
+            deleted: false,
+            inactivated: true,
+            message: `El maestro tiene historial académico (${detalles.join(', ')}). Se ha inactivado para preservar los datos.`,
+            registros_historicos: totalRegistros,
+            detalles: detalles
+        };
+    }
+
+    // PASO 3: No tiene historial → Eliminar en cascada
+    const sqlGetPersonal = `SELECT personal_id FROM users WHERE id = ?`;
+    const personalResult = await query(sqlGetPersonal, [user_id]);
+
+    if (!personalResult || personalResult.length === 0) throw Error('Maestro no encontrado');
+
+    const personal_id = personalResult[0].personal_id;
+
+    // Eliminar en orden de dependencias
+    await query('DELETE FROM maestro_instrumento WHERE maestro_id = ?', [user_id]);
+    await query('DELETE FROM maestro_clases WHERE id_maestro = ?', [user_id]);
+    await query('DELETE FROM maestro WHERE user_id = ?', [user_id]);
+    await query('DELETE FROM users WHERE id = ?', [user_id]);
+    await query('DELETE FROM personal WHERE id = ?', [personal_id]);
+
+    return {
+        deleted: true,
+        inactivated: false,
+        message: 'Maestro eliminado permanentemente (no tenía historial académico)',
+        idDeleted: user_id
+    };
+};
+
+module.exports = {
+    findAllStudent,
+    findAllTeacher,
+    findAllInstrumento,
+    saveStudent,
+    updateStudent,
+    remove,
+    saveTeacher,
+    updateTeacher,
+    saveUser,
+    updateUser,
+    findAllEncargado,
+    findAllRecepcionista,
+    activeStudents,
+    findAllStudentAsistencias,
+    removeStudent,
+    findAllStudentClases,
+    removeStudentAsistencia,
+    saveStudentAsistencias,
+    findAllStudentByMaestro,
+    updateTeacherStats,
+    findAllStatsByMaestro,
+    findAllStudentRepo,
+    removeStudentPermanente,
+    checkMatricula,
+    findAllTeacherRepo,
+    findAllStudentCampus,
+    removeRepo,
+    findAllTeacherByStatus,
+    removeEmpleado,
+    // Nuevas funciones de solicitudes de baja
+    createSolicitudBaja,
+    findSolicitudesBaja,
+    aprobarSolicitudBaja,
+    rechazarSolicitudBaja,
+    // Eliminación segura de maestros
+    deleteMaestroSeguro
+};
