@@ -16,12 +16,13 @@ const findAllPromocion = async()=>{
 
 const save = async(promocion)=>{
     if(!promocion.promocion) throw Error("Missing fields");
-    const sql = `INSERT INTO promocion(promocion, descuento, fecha_inicio, fecha_fin) VALUES(?,?,?,?)`;
+    const sql = `INSERT INTO promocion(promocion, descuento, fecha_inicio, fecha_fin, duracion_meses) VALUES(?,?,?,?,?)`;
     const {insertedId} = await query(sql, [
         promocion.promocion,
         promocion.descuento,
         promocion.fecha_inicio || null,
-        promocion.fecha_fin || null
+        promocion.fecha_fin || null,
+        promocion.duracion_meses || null
     ]);
 
     return {...promocion, id:insertedId}
@@ -30,19 +31,20 @@ const save = async(promocion)=>{
 const update = async (promocion) => {
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(promocion.id)) throw Error("Wrong Type");
-    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio
     if (!promocion.id) throw Error("Missing Fields");
     if (
         !promocion.promocion
     ) throw Error("Missing Fields");
 
-    const sql = `UPDATE promocion SET promocion=?, descuento=?, fecha_inicio=?, fecha_fin=? WHERE id=?;`;
+    const sql = `UPDATE promocion SET promocion=?, descuento=?, fecha_inicio=?, fecha_fin=?, duracion_meses=? WHERE id=?;`;
 
     await query(sql, [
         promocion.promocion,
         promocion.descuento,
         promocion.fecha_inicio || null,
         promocion.fecha_fin || null,
+        promocion.duracion_meses || null,
         promocion.id,
     ]);
     return{ ...promocion }

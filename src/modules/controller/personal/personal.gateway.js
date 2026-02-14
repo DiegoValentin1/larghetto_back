@@ -1,5 +1,6 @@
 const { hashPassword } = require('../../../utils/functions');
 const { query } = require('../../../utils/mysql');
+const { calcularMensualidadReal } = require('../../../utils/promocion-helper');
 
 const findAll = async () => {
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
@@ -150,8 +151,11 @@ const saveStudent = async (person) => {
     const randomLetter = generateRandomLetter();
     matricula = `L${initials}${year}${month}${randomLetter}`;
 
-    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const respuesta = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.promocion, person.observaciones, matricula, person.campus, person.nombreMadre || 'N/A', person.nombrePadre || 'N/A', person.padreTelefono || 'N/A', person.madreTelefono || 'N/A', person.inscripcion, person.fechaInicio]);
+    // NUEVO: fecha_inicio_promo = fecha_inicio del alumno
+    const fechaInicioPromo = person.fechaInicio;
+
+    const sql = `CALL InsertarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const respuesta = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.promocion, person.observaciones, matricula, person.campus, person.nombreMadre || 'N/A', person.nombrePadre || 'N/A', person.padreTelefono || 'N/A', person.madreTelefono || 'N/A', person.inscripcion, person.fechaInicio, fechaInicioPromo]);
 
     console.log(respuesta);
 
@@ -197,9 +201,14 @@ const updateStudent = async (person) => {
     });
     await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
 
-    // Obtener datos del alumno para calcular montos
+    // MODIFICADO: Obtener datos incluyendo duracion_meses y fecha_inicio_promo
     const alumnoData = await query(`
-        SELECT a.mensualidad, COALESCE(p.descuento, 0) as descuento
+        SELECT
+            a.mensualidad,
+            a.promocion_id as promocion_id_anterior,
+            a.fecha_inicio_promo,
+            COALESCE(p.descuento, 0) as descuento,
+            p.duracion_meses
         FROM alumno a
         LEFT JOIN promocion p ON p.id = a.promocion_id
         WHERE a.user_id = ?
@@ -207,7 +216,24 @@ const updateStudent = async (person) => {
 
     const mensualidad = alumnoData[0]?.mensualidad || 0;
     const descuento_promo = alumnoData[0]?.descuento || 0;
-    const mensualidad_real = mensualidad - (mensualidad * descuento_promo / 100);
+    const duracion_meses = alumnoData[0]?.duracion_meses || null;
+    const fecha_inicio_promo_actual = alumnoData[0]?.fecha_inicio_promo || null;
+    const promocion_id_anterior = alumnoData[0]?.promocion_id_anterior || null;
+
+    // NUEVO: Si cambió la promoción, resetear fecha_inicio_promo
+    let nueva_fecha_inicio_promo = fecha_inicio_promo_actual;
+    if (promocion_id_anterior !== person.promocion) {
+        nueva_fecha_inicio_promo = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    // MODIFICADO: Usar helper para calcular mensualidad_real
+    const mensualidad_real = calcularMensualidadReal({
+        mensualidad: mensualidad,
+        descuento_original: descuento_promo,
+        duracion_meses: duracion_meses,
+        fecha_inicio_promo: nueva_fecha_inicio_promo,
+        fecha_referencia: new Date()
+    });
 
     person.pagos && await person.pagos.forEach(async (element) => {
         // Calcular monto según tipo de pago
@@ -227,8 +253,9 @@ const updateStudent = async (person) => {
         fechaActual.setMonth(fechaActual.getMonth() - 1);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaActual]);
     }
-    const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.padreTelefono, person.madreTelefono, person.fechaInicio, person.inscripcion]);
+    // MODIFICADO: Agregar nueva_fecha_inicio_promo como parámetro (24º)
+    const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.padreTelefono, person.madreTelefono, person.fechaInicio, person.inscripcion, nueva_fecha_inicio_promo]);
     return { ...person }
 };
 
@@ -582,11 +609,37 @@ const deleteMaestroSeguro = async (user_id) => {
     };
 };
 
-// Infinite scroll - Solo campos necesarios para la tabla
+// Infinite scroll - Todos los campos necesarios para edición
 const findAllStudentLazy = async (offset = 0, limit = 100, campus = null) => {
-    const baseSql = `SELECT al.id as alu_id, al.matricula, pe.name, al.mensualidad,
-                     al.inscripcion, al.proximo_pago, us.campus, al.estado,
-                     us.id as user_id, promo.descuento
+    const baseSql = `SELECT
+                     al.id as alu_id,
+                     al.matricula,
+                     pe.name,
+                     al.mensualidad,
+                     al.inscripcion,
+                     al.proximo_pago,
+                     us.campus,
+                     al.estado,
+                     us.id as user_id,
+                     promo.descuento,
+                     al.fecha_inicio,
+                     al.fecha_inicio_promo,
+                     promo.duracion_meses,
+                     promo.promocion,
+                     al.promocion_id,
+                     pe.id as personal_id,
+                     us.email,
+                     pe.fechaNacimiento,
+                     al.nivel,
+                     pe.domicilio,
+                     pe.municipio,
+                     pe.telefono,
+                     pe.contactoEmergencia,
+                     pe.observaciones,
+                     al.nombreMadre,
+                     al.nombrePadre,
+                     al.madreTelefono,
+                     al.padreTelefono
     FROM personal pe
     JOIN users us on us.personal_id=pe.id
     JOIN alumno al on al.user_id=us.id
@@ -599,11 +652,37 @@ const findAllStudentLazy = async (offset = 0, limit = 100, campus = null) => {
     return await query(sql, params);
 };
 
-// Búsqueda en backend con campos parciales
+// Búsqueda en backend con todos los campos necesarios
 const findAllStudentSearch = async (busqueda, offset = 0, limit = 100, campus = null) => {
-    const baseSql = `SELECT al.id as alu_id, al.matricula, pe.name, al.mensualidad,
-                     al.inscripcion, al.proximo_pago, us.campus, al.estado,
-                     us.id as user_id, promo.descuento
+    const baseSql = `SELECT
+                     al.id as alu_id,
+                     al.matricula,
+                     pe.name,
+                     al.mensualidad,
+                     al.inscripcion,
+                     al.proximo_pago,
+                     us.campus,
+                     al.estado,
+                     us.id as user_id,
+                     promo.descuento,
+                     al.fecha_inicio,
+                     al.fecha_inicio_promo,
+                     promo.duracion_meses,
+                     promo.promocion,
+                     al.promocion_id,
+                     pe.id as personal_id,
+                     us.email,
+                     pe.fechaNacimiento,
+                     al.nivel,
+                     pe.domicilio,
+                     pe.municipio,
+                     pe.telefono,
+                     pe.contactoEmergencia,
+                     pe.observaciones,
+                     al.nombreMadre,
+                     al.nombrePadre,
+                     al.madreTelefono,
+                     al.padreTelefono
     FROM personal pe
     JOIN users us on us.personal_id=pe.id
     JOIN alumno al on al.user_id=us.id
