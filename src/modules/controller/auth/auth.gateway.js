@@ -6,7 +6,7 @@ const { insertLog } = require("../stats/stats.gateway");
 const login = async (user) => {
     const { email, password } = user;
     if (!email || !password) throw Error('Missing fields');
-    const sql = `SELECT * FROM users join personal on users.personal_id = personal.id WHERE email=? AND users.status=1`;
+    const sql = `SELECT users.id as user_id, users.email, users.role, users.campus, users.password, personal.name, personal.fechaNacimiento FROM users join personal on users.personal_id = personal.id WHERE email=? AND users.status=1`;
     const existUser = await query(sql, [email]);
     console.log(existUser);
     if (
@@ -14,7 +14,7 @@ const login = async (user) => {
     )
         return {
             token: generateToken({
-                id: existUser[0].id,
+                id: existUser[0].user_id,
                 email: existUser[0].email,
                 role: existUser[0].role,
                 isLogged: true

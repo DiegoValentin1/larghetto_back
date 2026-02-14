@@ -11,29 +11,38 @@ const generateToken = (payload)=>{
 
 const auth = async(req, res, next)=>{
     try {
+        console.log('=== MIDDLEWARE AUTH ===');
         const token = req.headers.authorization?.replace('Bearer ', '');
+        console.log('1. Token recibido:', token ? 'SÍ' : 'NO');
+
         if(!token) throw Error('Invalid Token');
+
         const decodeToken = jwt.verify(token, JWT_SECRET);
+        console.log('2. Token decodificado:', decodeToken);
 
         // Validar que el usuario siga activo en la base de datos
         const sql = `SELECT status FROM users WHERE id = ?`;
+        console.log('3. Query SQL:', sql, 'con ID:', decodeToken.id);
+
         const userStatus = await query(sql, [decodeToken.id]);
+        console.log('4. Resultado de BD:', userStatus);
 
         // Verificación defensiva: usuario debe existir y estar activo
         if(!Array.isArray(userStatus) || userStatus.length === 0) {
-            console.log('Usuario no existe en BD:', decodeToken.id);
+            console.log('❌ Usuario no existe en BD:', decodeToken.id);
             throw Error('User does not exist');
         }
 
         if(!userStatus[0] || userStatus[0].status !== 1) {
-            console.log('Usuario inactivo:', decodeToken.id);
+            console.log('❌ Usuario inactivo:', decodeToken.id, 'Status:', userStatus[0]?.status);
             throw Error('User is inactive');
         }
 
+        console.log('✅ Usuario válido y activo:', decodeToken.id);
         req.token = decodeToken;
         next();
     } catch (error) {
-        console.log('Error en autenticación:', error.message);
+        console.log('❌ Error en autenticación:', error.message);
         res.status(401).json({message:'Unauthorized'})
     }
 };
