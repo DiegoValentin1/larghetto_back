@@ -1,7 +1,8 @@
 const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
-const {personalRouter, instrumentoRouter, promocionRouter, authRouter, statsRouter, claseRouter, uploadsRouter} = require('../modules/controller/routes'); 
+const { auth } = require('./jwt');
+const {personalRouter, instrumentoRouter, promocionRouter, authRouter, statsRouter, claseRouter, uploadsRouter} = require('../modules/controller/routes');
 
 const app = express();
 
@@ -14,13 +15,15 @@ app.get('/', (req, rest)=>{
     rest.send("Welcome")
 });
 
-//http://localhost:3000
-app.use('/api/personal', personalRouter);
-app.use('/api/instrumento', instrumentoRouter);
-app.use('/api/promocion', promocionRouter);
+// Rutas públicas (sin autenticación)
 app.use('/api/auth', authRouter);
-app.use('/api/stats', statsRouter);
-app.use('/api/clase', claseRouter);
-app.use('/api/uploads', uploadsRouter)
+
+// Rutas protegidas (requieren autenticación y usuario activo)
+app.use('/api/personal', auth, personalRouter);
+app.use('/api/instrumento', auth, instrumentoRouter);
+app.use('/api/promocion', auth, promocionRouter);
+app.use('/api/stats', auth, statsRouter);
+app.use('/api/clase', auth, claseRouter);
+app.use('/api/uploads', auth, uploadsRouter);
 module.exports = {app};
 
