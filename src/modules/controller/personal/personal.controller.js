@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllTeacherArchived, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -159,6 +159,18 @@ const getAllTeacher = async(req, res=Response)=>{
 const getAllTeacherByStatus = async(req, res=Response)=>{
     try {
         const personal = await findAllTeacherByStatus();
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getAllTeacherArchived = async(req, res=Response)=>{
+    try {
+        const {campus} = req.query;
+        const personal = await findAllTeacherArchived(campus);
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -488,10 +500,11 @@ const deleteMaestroPermanente = async (req, res = Response) => {
 
       const result = await deleteMaestroSeguro(parseInt(id));
 
-      if (result.deleted) {
-         await insertLog({empleado, accion: 'Maestro eliminado permanentemente'});
-      } else {
-         await insertLog({empleado, accion: `Maestro inactivado (${result.registros_historicos} registros históricos)`});
+      if (result.archived) {
+         const detalleLog = result.registros_historicos > 0
+             ? `Maestro archivado (${result.registros_historicos} registros históricos)`
+             : 'Maestro archivado (sin historial)';
+         await insertLog({empleado, accion: detalleLog});
       }
 
       res.status(200).json(result);
@@ -514,6 +527,7 @@ personalRouter.get('/alumno/clases/:id', getAllStudentByMaestro);
 personalRouter.get('/teacher/stats/:id', getAllStatsByMaestro);
 personalRouter.get('/teacher/', getAllTeacher);
 personalRouter.get('/teacher/active', getAllTeacherByStatus);
+personalRouter.get('/teacher/archived', [auth, checkRoles(['SUPER', 'ENCARGADO'])], getAllTeacherArchived);
 personalRouter.get('/clases/:id', getAllStudentClases);
 personalRouter.get('/matricula/check/:matricula', matriculaExists);
 personalRouter.get('/recepcionista/', getAllRecepcionista);

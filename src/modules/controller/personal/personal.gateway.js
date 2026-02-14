@@ -96,20 +96,33 @@ const activeStudents = async () => {
 
 const findAllTeacher = async () => {
     const sql = `SELECT pe.*,us.campus, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
-    FROM personal pe 
+    FROM personal pe
     join users us on us.personal_id=pe.id
     join maestro mae on mae.user_id=us.id
-    WHERE us.role='MAESTRO'`;
+    WHERE us.role='MAESTRO' AND us.status=1`;
     return await query(sql, []);
 }
 
 const findAllTeacherByStatus = async () => {
     const sql = `SELECT pe.*,us.campus, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
-    FROM personal pe 
+    FROM personal pe
     join users us on us.personal_id=pe.id
     join maestro mae on mae.user_id=us.id
     WHERE us.role='MAESTRO' AND us.status=1`;
     return await query(sql, []);
+}
+
+const findAllTeacherArchived = async (campus = null) => {
+    const baseSql = `SELECT pe.*,us.campus, us.email, us.role, us.status , us.id as user_id, mae.*, pe.id as personal_id
+    FROM personal pe
+    join users us on us.personal_id=pe.id
+    join maestro mae on mae.user_id=us.id
+    WHERE us.role='MAESTRO' AND us.status=0`;
+
+    const sql = campus ? `${baseSql} AND us.campus=?` : baseSql;
+    const params = campus ? [campus] : [];
+
+    return await query(sql, params);
 }
 
 const findAllInstrumento = async () => {
@@ -571,41 +584,21 @@ const deleteMaestroSeguro = async (user_id) => {
         }
     }
 
-    // PASO 2: Decidir acción
-    if (totalRegistros > 0) {
-        // Tiene historial → Solo inactivar
-        const sqlInactivar = `UPDATE users SET status = 0 WHERE id = ?`;
-        await query(sqlInactivar, [user_id]);
+    // PASO 2: SIEMPRE ARCHIVAR (status = 0)
+    // Ya no eliminamos maestros - todos van a "Archivados"
+    const sqlArchivar = `UPDATE users SET status = 0 WHERE id = ?`;
+    await query(sqlArchivar, [user_id]);
 
-        return {
-            deleted: false,
-            inactivated: true,
-            message: `El maestro tiene historial académico (${detalles.join(', ')}). Se ha inactivado para preservar los datos.`,
-            registros_historicos: totalRegistros,
-            detalles: detalles
-        };
-    }
-
-    // PASO 3: No tiene historial → Eliminar en cascada
-    const sqlGetPersonal = `SELECT personal_id FROM users WHERE id = ?`;
-    const personalResult = await query(sqlGetPersonal, [user_id]);
-
-    if (!personalResult || personalResult.length === 0) throw Error('Maestro no encontrado');
-
-    const personal_id = personalResult[0].personal_id;
-
-    // Eliminar en orden de dependencias
-    await query('DELETE FROM maestro_instrumento WHERE maestro_id = ?', [user_id]);
-    await query('DELETE FROM maestro_clases WHERE id_maestro = ?', [user_id]);
-    await query('DELETE FROM maestro WHERE user_id = ?', [user_id]);
-    await query('DELETE FROM users WHERE id = ?', [user_id]);
-    await query('DELETE FROM personal WHERE id = ?', [personal_id]);
+    const mensajeDetalle = totalRegistros > 0
+        ? `El maestro tiene ${totalRegistros} registro(s) histórico(s): ${detalles.join(', ')}.`
+        : `El maestro no tiene historial académico.`;
 
     return {
-        deleted: true,
-        inactivated: false,
-        message: 'Maestro eliminado permanentemente (no tenía historial académico)',
-        idDeleted: user_id
+        deleted: false,
+        archived: true,
+        message: `Maestro archivado exitosamente. ${mensajeDetalle}`,
+        registros_historicos: totalRegistros,
+        detalles: detalles
     };
 };
 
@@ -721,6 +714,8 @@ const getStudentStatusCount = async (campus = null) => {
 module.exports = {
     findAllStudent,
     findAllTeacher,
+    findAllTeacherByStatus,
+    findAllTeacherArchived,
     findAllInstrumento,
     saveStudent,
     updateStudent,
