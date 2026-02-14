@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -545,5 +545,51 @@ personalRouter.put('/solicitudes-baja/:id/rechazar', [auth, checkRoles(['SUPER']
 
 // Ruta de eliminación segura de maestros
 personalRouter.delete('/teacher/permanente/:id', [auth, checkRoles(['SUPER'])], deleteMaestroPermanente);
+
+// Infinite scroll - Lazy loading de alumnos
+const getAllStudentLazy = async(req, res=Response)=>{
+    try {
+        const { offset = 0, limit = 100, campus } = req.query;
+        const personal = await findAllStudentLazy(offset, limit, campus || null);
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+// Búsqueda de alumnos en backend
+const getAllStudentSearch = async(req, res=Response)=>{
+    try {
+        const { q, offset = 0, limit = 100, campus } = req.query;
+        if (!q) {
+            return res.status(400).json({message: 'Query parameter required'});
+        }
+        const personal = await findAllStudentSearch(q, offset, limit, campus || null);
+        res.status(200).json(personal);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+// Conteo de alumnos por status
+const getStatusCount = async(req, res=Response)=>{
+    try {
+        const { campus } = req.query;
+        const statusCount = await getStudentStatusCount(campus || null);
+        res.status(200).json(statusCount);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+personalRouter.get('/lazy', getAllStudentLazy);
+personalRouter.get('/search', getAllStudentSearch);
+personalRouter.get('/status-count', getStatusCount);
 
 module.exports = {personalRouter, };

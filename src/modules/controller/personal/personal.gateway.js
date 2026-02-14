@@ -582,6 +582,63 @@ const deleteMaestroSeguro = async (user_id) => {
     };
 };
 
+// Infinite scroll - Solo campos necesarios para la tabla
+const findAllStudentLazy = async (offset = 0, limit = 100, campus = null) => {
+    const baseSql = `SELECT al.id as alu_id, al.matricula, pe.name, al.mensualidad,
+                     al.inscripcion, al.proximo_pago, us.campus, al.estado,
+                     us.id as user_id, promo.descuento
+    FROM personal pe
+    JOIN users us on us.personal_id=pe.id
+    JOIN alumno al on al.user_id=us.id
+    JOIN promocion promo on promo.id=al.promocion_id
+    WHERE us.role='ALUMNO'`;
+
+    const sql = campus ? `${baseSql} AND us.campus=? LIMIT ? OFFSET ?` : `${baseSql} LIMIT ? OFFSET ?`;
+    const params = campus ? [campus, parseInt(limit), parseInt(offset)] : [parseInt(limit), parseInt(offset)];
+
+    return await query(sql, params);
+};
+
+// Búsqueda en backend con campos parciales
+const findAllStudentSearch = async (busqueda, offset = 0, limit = 100, campus = null) => {
+    const baseSql = `SELECT al.id as alu_id, al.matricula, pe.name, al.mensualidad,
+                     al.inscripcion, al.proximo_pago, us.campus, al.estado,
+                     us.id as user_id, promo.descuento
+    FROM personal pe
+    JOIN users us on us.personal_id=pe.id
+    JOIN alumno al on al.user_id=us.id
+    JOIN promocion promo on promo.id=al.promocion_id
+    WHERE us.role='ALUMNO' AND (al.matricula LIKE ? OR pe.name LIKE ?)`;
+
+    const sql = campus ? `${baseSql} AND us.campus=? LIMIT ? OFFSET ?` : `${baseSql} LIMIT ? OFFSET ?`;
+    const searchParam = `%${busqueda}%`;
+    const params = campus ? [searchParam, searchParam, campus, parseInt(limit), parseInt(offset)] : [searchParam, searchParam, parseInt(limit), parseInt(offset)];
+
+    return await query(sql, params);
+};
+
+// Conteo de alumnos por status para KPIs
+const getStudentStatusCount = async (campus = null) => {
+    const baseSql = `SELECT al.estado, COUNT(*) as count
+    FROM personal pe
+    JOIN users us on us.personal_id=pe.id
+    JOIN alumno al on al.user_id=us.id
+    WHERE us.role='ALUMNO'`;
+
+    const sql = campus ? `${baseSql} AND us.campus=? GROUP BY al.estado` : `${baseSql} GROUP BY al.estado`;
+    const params = campus ? [campus] : [];
+
+    const result = await query(sql, params);
+
+    // Convertir array a objeto {estado: count}
+    const statusObj = {};
+    result.forEach(row => {
+        statusObj[row.estado] = row.count;
+    });
+
+    return statusObj;
+};
+
 module.exports = {
     findAllStudent,
     findAllTeacher,
@@ -610,6 +667,9 @@ module.exports = {
     findAllTeacherRepo,
     findAllStudentCampus,
     removeRepo,
+    findAllStudentLazy,
+    findAllStudentSearch,
+    getStudentStatusCount,
     findAllTeacherByStatus,
     removeEmpleado,
     // Nuevas funciones de solicitudes de baja
