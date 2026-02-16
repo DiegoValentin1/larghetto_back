@@ -452,7 +452,8 @@ const findSolicitudesBaja = async (estado, campus) => {
         JOIN users us ON us.id = sb.alumno_id
         JOIN personal pa ON pa.id = us.personal_id
         JOIN alumno al ON al.user_id = us.id
-        JOIN personal ps ON ps.id = sb.solicitante_id
+        JOIN users us_solicitante ON us_solicitante.id = sb.solicitante_id
+        JOIN personal ps ON ps.id = us_solicitante.personal_id
         LEFT JOIN users usa ON usa.id = sb.aprobador_id
         LEFT JOIN personal pap ON pap.id = usa.personal_id
     `;

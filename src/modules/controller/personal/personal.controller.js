@@ -363,6 +363,15 @@ const actualizeTeacher = async (req, res = Response) => {
  const eliminateStudent = async (req, res = Response) => {
     try {
        const{ id, estado, empleado } =req.body;
+
+       // Validación: RECEPCION no puede cambiar directamente a estado 0 (Bajo)
+       // Debe usar el sistema de solicitudes de baja
+       if (req.token && req.token.role === 'RECEPCION' && estado === 0) {
+          return res.status(403).json({
+             message: 'Los recepcionistas deben usar el sistema de solicitudes para dar de baja alumnos'
+          });
+       }
+
        await insertLog({empleado, accion:'Estudiante estatus modificado'});
        const person = await removeStudent(id, estado);
        res.status(200).json(person);
@@ -548,7 +557,7 @@ personalRouter.delete('/:id',eliminate);
 personalRouter.delete('/empleado/:id',eliminateEmpleado);
 personalRouter.delete('/repo/:id',eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
-personalRouter.put('/alumno/eliminar',[auth, checkRoles(['SUPER'])],eliminateStudent);
+personalRouter.put('/alumno/eliminar',[auth, checkRoles(['SUPER', 'ENCARGADO', 'RECEPCION'])],eliminateStudent);
 personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);
 
 // Rutas de solicitudes de baja
