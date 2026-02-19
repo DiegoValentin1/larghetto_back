@@ -5,7 +5,8 @@ const { findAllTotal, findAllCentro, findAllBuga, findAllCuautla, findAllActual,
 
 const getAllTotal = async(req, res=Response)=>{
     try {
-        const stat = await findAllTotal();
+        const { year } = req.query;
+        const stat = await findAllTotal(year);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
@@ -16,7 +17,8 @@ const getAllTotal = async(req, res=Response)=>{
 
 const getAllCentro = async(req, res=Response)=>{
     try {
-        const stat = await findAllCentro();
+        const { year } = req.query;
+        const stat = await findAllCentro(year);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
@@ -27,7 +29,8 @@ const getAllCentro = async(req, res=Response)=>{
 
 const getAllBuga = async(req, res=Response)=>{
     try {
-        const stat = await findAllBuga();
+        const { year } = req.query;
+        const stat = await findAllBuga(year);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
@@ -38,7 +41,8 @@ const getAllBuga = async(req, res=Response)=>{
 
 const getAllCuautla = async(req, res=Response)=>{
     try {
-        const stat = await findAllCuautla();
+        const { year } = req.query;
+        const stat = await findAllCuautla(year);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);
@@ -46,9 +50,11 @@ const getAllCuautla = async(req, res=Response)=>{
         res.status(400).json({message});
     }
 }
+
 const getAllCdmx = async(req, res=Response)=>{
     try {
-        const stat = await findAllCdmx();
+        const { year } = req.query;
+        const stat = await findAllCdmx(year);
         res.status(200).json(stat);
     } catch (error) {
         console.log(error);

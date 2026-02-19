@@ -15,9 +15,10 @@ CASE
     ELSE 0
 END`;
 
-const findAllTotal = async () => {
-    const sql = `SELECT fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE YEAR(fecha) = YEAR(CURDATE()) group by fecha`;
-    return await query(sql, []);
+const findAllTotal = async (year) => {
+    const yearFilter = year || new Date().getFullYear();
+    const sql = `SELECT fecha, SUM(total) as total FROM registro_alumnos WHERE YEAR(fecha) = ? group by fecha`;
+    return await query(sql, [yearFilter]);
 }
 
 const insertLog = async (log) => {
@@ -27,25 +28,28 @@ const insertLog = async (log) => {
 
 
 
-const findAllCentro = async () => {
-    const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='centro' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
-    return await query(sql, []);
+const findAllCentro = async (year) => {
+    const yearFilter = year || new Date().getFullYear();
+    const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='centro' AND YEAR(fecha) = ? group by campus, fecha`;
+    return await query(sql, [yearFilter]);
 }
 
-const findAllBuga = async () => {
-    const sql = `SELECT campus, fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE campus='bugambilias' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
-    return await query(sql, []);
+const findAllBuga = async (year) => {
+    const yearFilter = year || new Date().getFullYear();
+    const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='bugambilias' AND YEAR(fecha) = ? group by campus, fecha`;
+    return await query(sql, [yearFilter]);
 }
 
-const findAllCuautla = async () => {
-    const sql = `SELECT campus, fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE campus='cuautla' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
-    return await query(sql, []);
+const findAllCuautla = async (year) => {
+    const yearFilter = year || new Date().getFullYear();
+    const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='cuautla' AND YEAR(fecha) = ? group by campus, fecha`;
+    return await query(sql, [yearFilter]);
 }
-const findAllCdmx = async () => {
-    const sql = `SELECT campus, fecha, SUM(total) as total FROM larghetto.registro_alumnos WHERE campus='CDMX' AND YEAR(fecha) = YEAR(CURDATE()) group by campus, fecha`;
-    const response = await query(sql, []);
-    console.log(response);
-    return response;
+
+const findAllCdmx = async (year) => {
+    const yearFilter = year || new Date().getFullYear();
+    const sql = `SELECT campus, fecha, SUM(total) as total FROM registro_alumnos WHERE campus='CDMX' AND YEAR(fecha) = ? group by campus, fecha`;
+    return await query(sql, [yearFilter]);
 }
 
 const findAllActual = async () => {
