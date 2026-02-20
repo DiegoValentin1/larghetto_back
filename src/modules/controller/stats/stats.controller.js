@@ -222,25 +222,12 @@ const getHistoricoAlumnos = async (req, res = Response) => {
 }
 
 const getHistoricoPagos = async (req, res = Response) => {
-    console.log('🎯 CONTROLLER: getHistoricoPagos INICIADO');
-    console.log('🎯 Query params raw:', req.query);
     try {
-        const {year, month, campus} = req.query;
-        console.log('🎯 Params extraidos:', {year, month, campus, type_year: typeof year});
-
-        console.log('🎯 Llamando a findHistoricoPagos...');
-        const historico = await findHistoricoPagos(year, month, campus);
-        console.log('🎯 RETORNADO de findHistoricoPagos:', {
-            length: historico?.length,
-            isArray: Array.isArray(historico),
-            primerRegistro: historico?.[0]
-        });
-
-        console.log('🎯 Enviando respuesta...');
+        const { year } = req.query;
+        const historico = await findHistoricoPagos(year);
         res.status(200).json(historico);
-        console.log('🎯 Respuesta enviada ✅');
     } catch (error) {
-        console.log('❌❌❌ ERROR en getHistoricoPagos:', error.message, error.stack);
+        console.log(error);
         const message = validateError(error);
         res.status(400).json({message});
     }

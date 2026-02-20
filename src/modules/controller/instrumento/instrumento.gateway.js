@@ -16,9 +16,35 @@ const findAllInstrumentoMaestro = async()=>{
     return await query(sql, []);
 }
 
-const findLastestLogs = async()=>{
-    const sql = `SELECT * FROM logs ORDER BY id DESC LIMIT 1000`;
-    return await query(sql, []);
+const findLastestLogs = async(year)=>{
+    const yearFilter = parseInt(year) || new Date().getFullYear();
+    const sql = `SELECT * FROM logs WHERE YEAR(fecha) = ? ORDER BY id DESC LIMIT 1000`;
+    return await query(sql, [yearFilter]);
+}
+
+const findLogsPaginados = async({ fechaInicio, fechaFin, page, limit }) => {
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const params = [];
+    let where = 'WHERE 1=1';
+
+    if (fechaInicio) { where += ' AND DATE(fecha) >= ?'; params.push(fechaInicio); }
+    if (fechaFin)    { where += ' AND DATE(fecha) <= ?'; params.push(fechaFin); }
+
+    const sqlCount = `SELECT COUNT(*) as total FROM logs ${where}`;
+    const sqlData  = `SELECT * FROM logs ${where} ORDER BY id DESC LIMIT ? OFFSET ?`;
+
+    const [countResult, data] = await Promise.all([
+        query(sqlCount, [...params]),
+        query(sqlData,  [...params, parseInt(limit), offset])
+    ]);
+
+    return { data, total: countResult[0].total };
+}
+
+const findLogsRangoFechas = async() => {
+    const sql = `SELECT DATE(MIN(fecha)) as fecha_min, DATE(MAX(fecha)) as fecha_max FROM logs`;
+    const result = await query(sql, []);
+    return result[0];
 }
 
 const findById = async(id)=>{
@@ -88,4 +114,4 @@ const remove = async(id)=>{
     return{ idDeleted:id };
 }
 
-module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo /*, findAllAdmin*/, findAlumnosClases, findAlumnosClasesCampus};
+module.exports = {findAllInstrumento , save, update , remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo /*, findAllAdmin*/, findAlumnosClases, findAlumnosClasesCampus, findLogsPaginados, findLogsRangoFechas};

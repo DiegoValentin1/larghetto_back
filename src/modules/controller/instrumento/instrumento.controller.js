@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo, findAlumnosClasesCampus, findAlumnosClases} = require('./instrumento.gateway');
+const {findAllInstrumento, save, update, remove, findLastestLogs, findById, findAllInstrumentoMaestro, findAllInstrumento2, saveRepo, findAlumnosClasesCampus, findAlumnosClases, findLogsPaginados, findLogsRangoFechas} = require('./instrumento.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 
@@ -76,7 +76,8 @@ const getAllInstrumentoMaestro = async(req, res=Response)=>{
 
 const getLastestLogs = async(req, res=Response)=>{
     try {
-        const personal = await findLastestLogs();
+        const { year } = req.query;
+        const personal = await findLastestLogs(year);
         res.status(200).json(personal);
     } catch (error) {
         console.log(error);
@@ -156,6 +157,29 @@ const actualize = async (req, res = Response) => {
     }
  }
 
+const getLogsPaginados = async(req, res=Response) => {
+    try {
+        const { fechaInicio, fechaFin, page = 1, limit = 100 } = req.query;
+        const result = await findLogsPaginados({ fechaInicio, fechaFin, page, limit });
+        res.status(200).json(result);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
+const getLogsRangoFechas = async(req, res=Response) => {
+    try {
+        const rango = await findLogsRangoFechas();
+        res.status(200).json(rango);
+    } catch (error) {
+        console.log(error);
+        const message = validateError(error);
+        res.status(400).json({message});
+    }
+}
+
 const instrumentoRouter = Router();
 
 instrumentoRouter.get('/', getAllInstrumento);
@@ -163,6 +187,8 @@ instrumentoRouter.get('/noti', enviarNoti);
 instrumentoRouter.get('/dos', getAllInstrumento2);
 instrumentoRouter.get('/teacher', getAllInstrumentoMaestro);
 instrumentoRouter.get('/lastest', getLastestLogs);
+instrumentoRouter.get('/logs/paginados', [auth], getLogsPaginados);
+instrumentoRouter.get('/logs/rango', [auth], getLogsRangoFechas);
 instrumentoRouter.get('/:id', getById);
 instrumentoRouter.post('/', insert);
 instrumentoRouter.post('/repo', insertRepo);

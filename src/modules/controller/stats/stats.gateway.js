@@ -471,45 +471,22 @@ const findHistoricoAlumnos = async (year, campus) => {
     return result;
 };
 
-const findHistoricoPagos = async (year, month, campus) => {
-    console.log('🔍 findHistoricoPagos llamada con:', {year, month, campus});
+const findHistoricoPagos = async (year) => {
+    const yearParam = parseInt(year) || new Date().getFullYear();
 
-    let sql = `
+    const sql = `
         SELECT
             MONTH(alp.fecha) as mes,
-            MONTHNAME(alp.fecha) as nombre_mes,
-            SUM(alp.monto_registrado) as total_mes,
-            SUM(CASE WHEN alp.tipo = 1 THEN alp.monto_registrado ELSE 0 END) as pagos_normales,
-            SUM(CASE WHEN alp.tipo = 2 THEN alp.monto_registrado ELSE 0 END) as pagos_descuento,
-            SUM(CASE WHEN alp.tipo = 3 THEN alp.monto_registrado ELSE 0 END) as pagos_recargo,
-            COUNT(*) as total_transacciones,
-            COUNT(DISTINCT alp.alumno_id) as alumnos_que_pagaron
+            us.campus,
+            SUM(alp.monto_registrado) as total_mes
         FROM alumno_pagos alp
         JOIN users us ON us.id = alp.alumno_id
         WHERE YEAR(alp.fecha) = ?
+        GROUP BY MONTH(alp.fecha), us.campus
+        ORDER BY mes ASC, us.campus ASC
     `;
 
-    const yearParam = parseInt(year) || new Date().getFullYear();
-    console.log('📅 Año parseado:', yearParam);
-    const params = [yearParam];
-
-    if (month) {
-        sql += ' AND MONTH(alp.fecha) = ?';
-        params.push(parseInt(month));
-    }
-
-    if (campus) {
-        sql += ' AND us.campus = ?';
-        params.push(campus);
-    }
-
-    sql += ' GROUP BY MONTH(alp.fecha), MONTHNAME(alp.fecha) ORDER BY mes ASC';
-
-    console.log('📊 SQL:', sql.substring(0, 100) + '...');
-    console.log('📊 Params:', params);
-    const result = await query(sql, params);
-    console.log('✅ Resultado query:', result?.length, 'registros');
-    return result;
+    return await query(sql, [yearParam]);
 };
 
 module.exports = {
