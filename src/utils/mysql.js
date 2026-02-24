@@ -96,4 +96,13 @@ function realizarAcciones() {
   });
 }
 
-module.exports = { query };
+const getConnection = () => {
+  return new Promise((resolve, reject) => {
+    client.getConnection((err, conn) => {
+      if (err) reject(err);
+      else resolve(conn);
+    });
+  });
+};
+
+module.exports = { query, getConnection };

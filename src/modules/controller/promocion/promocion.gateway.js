@@ -1,4 +1,4 @@
-const {query} = require('../../../utils/mysql');
+const {query, getConnection} = require('../../../utils/mysql');
 
 const findAllPromocion = async()=>{
     const sql = `
@@ -53,6 +53,7 @@ const update = async (promocion) => {
 const remove = async(id)=>{
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
+    if (parseInt(id) === 1) throw Object.assign(Error("La promoción 'Sin Promoción' no puede ser eliminada"), { statusCode: 400 });
     const sql = `UPDATE promocion SET status=IF(status = true, false, true) WHERE id=?`;
     await query(sql,[id]);
 
@@ -60,41 +61,42 @@ const remove = async(id)=>{
 }
 
 // ========================================
-// ELIMINACIÓN SEGURA DE PROMOCIONES
+// ELIMINACIÓN FÍSICA DE PROMOCIONES
 // ========================================
 
 const deleteFisicaPromocion = async (id) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
+    if (parseInt(id) === 1) throw Object.assign(Error("La promoción 'Sin Promoción' no puede ser eliminada"), { statusCode: 400 });
 
-    // 1. Verificar si hay alumnos usando la promoción
-    const sqlCheck = `SELECT COUNT(*) as count FROM alumno WHERE promocion_id = ?`;
-    const result = await query(sqlCheck, [id]);
-    const count = result[0].count;
+    const conn = await getConnection();
+    const promiseConn = conn.promise();
 
-    if (count > 0) {
-        // Si hay alumnos usando la promoción, solo inactivar
-        const sqlInactivar = `UPDATE promocion SET status = 0 WHERE id = ?`;
-        await query(sqlInactivar, [id]);
+    try {
+        await promiseConn.beginTransaction();
+
+        // 1. Reasignar alumnos afectados a "Sin Promoción" (id=1)
+        const [updateResult] = await promiseConn.query(
+            'UPDATE alumno SET promocion_id = 1 WHERE promocion_id = ?',
+            [id]
+        );
+
+        // 2. Eliminar físicamente la promoción
+        await promiseConn.query('DELETE FROM promocion WHERE id = ?', [id]);
+
+        await promiseConn.commit();
 
         return {
-            deleted: false,
-            inactivated: true,
-            message: `No se puede eliminar. La promoción está asignada a ${count} alumno(s). Se ha inactivado en su lugar.`,
-            alumnos_afectados: count
+            success: true,
+            eliminada: true,
+            alumnosReasignados: updateResult.affectedRows
         };
+    } catch (error) {
+        await promiseConn.rollback();
+        throw error;
+    } finally {
+        conn.release();
     }
-
-    // 2. Si no hay alumnos, eliminar físicamente
-    const sqlDelete = `DELETE FROM promocion WHERE id = ?`;
-    await query(sqlDelete, [id]);
-
-    return {
-        deleted: true,
-        inactivated: false,
-        message: 'Promoción eliminada exitosamente',
-        idDeleted: id
-    };
 };
 
 module.exports = {findAllPromocion , save, update , remove, deleteFisicaPromocion};

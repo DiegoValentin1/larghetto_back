@@ -66,13 +66,14 @@ const actualize = async (req, res = Response) => {
     try {
        const{ id } =req.params;
        const {empleado} = req.body;
+       if (parseInt(id) === 1) return res.status(400).json({ message: "La promoción 'Sin Promoción' no puede ser eliminada" });
        await insertLog({empleado, accion:'Promoción eliminada'});
        const person = await remove(id);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
        const message = validateError(error);
-       res.status(400).json({ message });
+       res.status(error.statusCode || 400).json({ message });
     }
  }
 
@@ -80,20 +81,20 @@ const actualize = async (req, res = Response) => {
     try {
        const {id} = req.params;
        const {empleado} = req.body;
+       if (parseInt(id) === 1) return res.status(400).json({ message: "La promoción 'Sin Promoción' no puede ser eliminada" });
 
        const result = await deleteFisicaPromocion(parseInt(id));
 
-       if (result.deleted) {
-          await insertLog({empleado, accion: 'Promoción eliminada permanentemente'});
-       } else {
-          await insertLog({empleado, accion: `Promoción inactivada (tenía ${result.alumnos_afectados} alumnos)`});
-       }
+       await insertLog({
+          empleado,
+          accion: `Promoción eliminada permanentemente (${result.alumnosReasignados} alumnos reasignados a Sin Promoción)`
+       });
 
        res.status(200).json(result);
     } catch (error) {
        console.log(error);
        const message = validateError(error);
-       res.status(400).json({message});
+       res.status(error.statusCode || 400).json({message});
     }
  }
 
