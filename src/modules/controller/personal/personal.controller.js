@@ -219,8 +219,8 @@ const insertStudent = async(req, res=Response)=>{
 const actualizeStudent = async (req, res = Response) => {
     console.log(req.body)
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, empleado, inscripcion, fechaInicio} = req.body;
-       await insertLog({empleado, accion:'Estudiante modificado'});
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, empleado, inscripcion, fechaInicio, matricula} = req.body;
+       await insertLog({empleado, accion:`Estudiante modificado: ${matricula}`});
        const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, inscripcion, fechaInicio})
        res.status(200).json(person);
     } catch (error) {
