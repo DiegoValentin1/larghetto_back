@@ -180,6 +180,14 @@ const saveStudent = async (person) => {
     return { ...person }
 }
 
+const checkEmailStaff = async (email) => {
+    const result = await query(
+        `SELECT id FROM users WHERE email=? AND role IN ('ENCARGADO', 'RECEPCION') LIMIT 1`,
+        [email]
+    );
+    return result.length > 0;
+}
+
 const saveUser = async (person) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.password) throw Error("Missing fields");
@@ -369,6 +377,11 @@ const removeRepo = async (id) => {
     return { idDeleted: id };
 }
 
+const getMatriculaByAlumnoId = async (id) => {
+    const result = await query(`SELECT matricula FROM alumno WHERE id=?`, [id]);
+    return result[0]?.matricula || id;
+}
+
 const removeStudent = async (id, estado) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
@@ -423,6 +436,12 @@ const removeAccents = (str) => {
 const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}) => {
     if (Number.isNaN(alumno_id) || Number.isNaN(solicitante_id)) throw Error("Wrong Type");
     if (!alumno_id || !solicitante_id || !motivo) throw Error('Missing Fields');
+
+    const existing = await query(
+        `SELECT id FROM solicitudes_baja WHERE alumno_id = ? AND estado = 'PENDIENTE' LIMIT 1`,
+        [alumno_id]
+    );
+    if (existing.length > 0) throw Object.assign(Error('Ya existe una solicitud de baja pendiente para este alumno'), { statusCode: 409 });
 
     const sql = `INSERT INTO solicitudes_baja (alumno_id, solicitante_id, motivo) VALUES (?, ?, ?)`;
     const result = await query(sql, [alumno_id, solicitante_id, motivo]);
@@ -723,12 +742,14 @@ module.exports = {
     remove,
     saveTeacher,
     updateTeacher,
+    checkEmailStaff,
     saveUser,
     updateUser,
     findAllEncargado,
     findAllRecepcionista,
     activeStudents,
     findAllStudentAsistencias,
+    getMatriculaByAlumnoId,
     removeStudent,
     findAllStudentClases,
     removeStudentAsistencia,

@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllTeacherArchived, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllTeacherArchived, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, getMatriculaByAlumnoId, checkEmailStaff, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -249,6 +249,10 @@ const actualizeStudent = async (req, res = Response) => {
     try {
         console.log(req.body);
         const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,password, campus, empleado} = req.body;
+        if (['ENCARGADO', 'RECEPCION'].includes(role)) {
+            const emailExists = await checkEmailStaff(email);
+            if (emailExists) return res.status(400).json({ message: `El correo ${email} ya está registrado para un encargado o recepcionista` });
+        }
         await insertLog({empleado, accion:'Estudiante añadido'});
         const person = await saveUser({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, password, campus});
         res.status(200).json(person);
@@ -364,15 +368,18 @@ const actualizeTeacher = async (req, res = Response) => {
     try {
        const{ id, estado, empleado } =req.body;
 
-       // Validación: RECEPCION no puede cambiar directamente a estado 0 (Bajo)
-       // Debe usar el sistema de solicitudes de baja
-       if (req.token && req.token.role === 'RECEPCION' && estado === 0) {
+       // RECEPCION y ENCARGADO no pueden cambiar directamente a estado 0 — deben usar solicitudes de baja
+       if (req.token && ['RECEPCION', 'ENCARGADO'].includes(req.token.role) && estado === 0) {
           return res.status(403).json({
-             message: 'Los recepcionistas deben usar el sistema de solicitudes para dar de baja alumnos'
+             message: 'Debes usar el sistema de solicitudes para dar de baja alumnos'
           });
        }
 
-       await insertLog({empleado, accion:'Estudiante estatus modificado'});
+       const matricula = await getMatriculaByAlumnoId(parseInt(id));
+       const accionLog = estado === 0
+           ? `Estudiante dado de baja: ${matricula}`
+           : `Estudiante estatus modificado: ${matricula}`;
+       await insertLog({empleado, accion: accionLog});
        const person = await removeStudent(id, estado);
        res.status(200).json(person);
     } catch (error) {
@@ -437,8 +444,8 @@ const solicitarBajaAlumno = async (req, res = Response) => {
       res.status(201).json(solicitud);
    } catch (error) {
       console.log(error);
-      const message = validateError(error);
-      res.status(400).json({message});
+      const message = error.statusCode ? error.message : validateError(error);
+      res.status(error.statusCode || 400).json({message});
    }
 }
 
