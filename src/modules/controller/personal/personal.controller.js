@@ -437,8 +437,9 @@ const solicitarBajaAlumno = async (req, res = Response) => {
    try {
       const {alumno_id, motivo, empleado} = req.body;
       const solicitante_id = req.token.id; // ID del usuario autenticado
+      const matriculaBaja = await getMatriculaByAlumnoId(parseInt(alumno_id));
 
-      await insertLog({empleado, accion: `Solicitud de baja para alumno ID ${alumno_id}`});
+      await insertLog({empleado, accion: `Solicitud de baja: ${matriculaBaja}`});
 
       const solicitud = await createSolicitudBaja({alumno_id, solicitante_id, motivo});
       res.status(201).json(solicitud);
