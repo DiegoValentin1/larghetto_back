@@ -173,9 +173,10 @@ const saveStudent = async (person) => {
     console.log(respuesta);
 
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [respuesta[0][0].usuarioInsertado])
-    person.clases && await person.clases.forEach(async (element) => {
-        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [respuesta[0][0].usuarioInsertado, element.maestro, element.instrumento, element.dia, element.hora])
-    });
+    const clasesValidas = (person.clases || []).filter(e => e.maestro && e.instrumento && e.dia && e.hora);
+    for (const element of clasesValidas) {
+        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [respuesta[0][0].usuarioInsertado, element.maestro, element.instrumento, element.dia, element.hora]);
+    }
 
     return { ...person }
 }
@@ -217,9 +218,10 @@ const updateStudent = async (person) => {
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.user_id) throw Error("Missing fields");
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
-    person.clases && await person.clases.forEach(async (element) => {
-        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora])
-    });
+    const clasesValidas = (person.clases || []).filter(e => e.maestro && e.instrumento && e.dia && e.hora);
+    for (const element of clasesValidas) {
+        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora]);
+    }
     await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
 
     // MODIFICADO: Obtener datos incluyendo duracion_meses y fecha_inicio_promo
