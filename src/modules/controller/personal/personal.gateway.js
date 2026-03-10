@@ -464,15 +464,15 @@ const findSolicitudesBaja = async (estado, campus) => {
             pa.name as alumno_nombre,
             pa.id as alumno_personal_id,
             al.matricula,
-            ps.name as solicitante_nombre,
+            COALESCE(ps.name, 'Usuario eliminado') as solicitante_nombre,
             pap.name as aprobador_nombre,
             us.campus
         FROM solicitudes_baja sb
         JOIN users us ON us.id = sb.alumno_id
         JOIN personal pa ON pa.id = us.personal_id
         JOIN alumno al ON al.user_id = us.id
-        JOIN users us_solicitante ON us_solicitante.id = sb.solicitante_id
-        JOIN personal ps ON ps.id = us_solicitante.personal_id
+        LEFT JOIN users us_solicitante ON us_solicitante.id = sb.solicitante_id
+        LEFT JOIN personal ps ON ps.id = us_solicitante.personal_id
         LEFT JOIN users usa ON usa.id = sb.aprobador_id
         LEFT JOIN personal pap ON pap.id = usa.personal_id
     `;

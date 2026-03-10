@@ -575,7 +575,7 @@ personalRouter.put('/solicitudes-baja/:id/aprobar', [auth, checkRoles(['SUPER'])
 personalRouter.put('/solicitudes-baja/:id/rechazar', [auth, checkRoles(['SUPER'])], rechazarSolicitud);
 
 // Ruta de eliminación segura de maestros
-personalRouter.delete('/teacher/permanente/:id', [auth, checkRoles(['SUPER'])], deleteMaestroPermanente);
+personalRouter.delete('/teacher/permanente/:id', [auth, checkRoles(['SUPER', 'ENCARGADO'])], deleteMaestroPermanente);
 
 // Infinite scroll - Lazy loading de alumnos
 const getAllStudentLazy = async(req, res=Response)=>{
