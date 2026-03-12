@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllStudent,findAllTeacher, findAllTeacherArchived, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, getMatriculaByAlumnoId, checkEmailStaff, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
+const {findAllStudent,findAllTeacher, findAllTeacherArchived, findAllInstrumento, saveStudent, updateStudent, remove, saveTeacher, updateTeacher, saveUser, updateUser, findAllEncargado, findAllRecepcionista, activeStudents, findAllStudentAsistencias, removeStudent, getMatriculaByAlumnoId, checkEmailStaff, checkEmailStaffExcluding, findAllStudentClases, removeStudentAsistencia, saveStudentAsistencias, findAllStudentByMaestro, updateTeacherStats, findAllStatsByMaestro, findAllStudentRepo, removeStudentPermanente, checkMatricula, findAllTeacherRepo, findAllStudentCampus, removeRepo, findAllTeacherByStatus, removeEmpleado, createSolicitudBaja, findSolicitudesBaja, aprobarSolicitudBaja, rechazarSolicitudBaja, deleteMaestroSeguro, findAllStudentLazy, findAllStudentSearch, getStudentStatusCount} = require('./personal.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 // const getAll = async(req, res=Response)=>{
@@ -266,6 +266,10 @@ const actualizeStudent = async (req, res = Response) => {
 const actualizeUser = async (req, res = Response) => {
     try {
        const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, empleado} = req.body;
+       if (['ENCARGADO', 'RECEPCION'].includes(role)) {
+           const emailTaken = await checkEmailStaffExcluding(email, id);
+           if (emailTaken) return res.status(400).json({ message: `El correo ${email} ya está registrado para otro encargado o recepcionista` });
+       }
        await insertLog({empleado, accion:'Estudiante actualizado'});
        const person = await updateUser({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role})
        res.status(200).json(person);

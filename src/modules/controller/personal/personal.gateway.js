@@ -189,6 +189,14 @@ const checkEmailStaff = async (email) => {
     return result.length > 0;
 }
 
+const checkEmailStaffExcluding = async (email, personalId) => {
+    const result = await query(
+        `SELECT u.id FROM users u WHERE u.email=? AND u.role IN ('ENCARGADO', 'RECEPCION') AND u.personal_id != ? LIMIT 1`,
+        [email, personalId]
+    );
+    return result.length > 0;
+}
+
 const saveUser = async (person) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.password) throw Error("Missing fields");
@@ -745,6 +753,7 @@ module.exports = {
     saveTeacher,
     updateTeacher,
     checkEmailStaff,
+    checkEmailStaffExcluding,
     saveUser,
     updateUser,
     findAllEncargado,
