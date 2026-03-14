@@ -265,13 +265,13 @@ const actualizeStudent = async (req, res = Response) => {
 
 const actualizeUser = async (req, res = Response) => {
     try {
-       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, empleado} = req.body;
+       const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,campus, empleado} = req.body;
        if (['ENCARGADO', 'RECEPCION'].includes(role)) {
            const emailTaken = await checkEmailStaffExcluding(email, id);
            if (emailTaken) return res.status(400).json({ message: `El correo ${email} ya está registrado para otro encargado o recepcionista` });
        }
        await insertLog({empleado, accion:'Estudiante actualizado'});
-       const person = await updateUser({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role})
+       const person = await updateUser({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,campus})
        res.status(200).json(person);
     } catch (error) {
        console.log(error);

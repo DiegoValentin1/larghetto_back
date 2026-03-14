@@ -215,6 +215,9 @@ const updateUser = async (person) => {
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role) throw Error("Missing fields");
     const sql = `CALL ActualizarUser(?,?,?,?,?,?,?,?,?)`;
     const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role]);
+    if (person.campus) {
+        await query(`UPDATE users SET campus=? WHERE personal_id=?`, [person.campus, person.id]);
+    }
     return { ...person }
 };
 
