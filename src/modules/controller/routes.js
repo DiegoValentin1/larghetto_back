@@ -5,5 +5,6 @@ const {promocionRouter} = require("./promocion/promocion.controller");
 const {statsRouter} = require('./stats/stats.controller')
 const {claseRouter} = require('./clase/clase.controller');
 const {uploadsRouter} = require('./uploads/uploads.controller')
+const {auditLogRouter} = require('./auditLog/auditLog.controller');
 
-module.exports = {personalRouter, authRouter, instrumentoRouter, promocionRouter, statsRouter, claseRouter, uploadsRouter};
+module.exports = {personalRouter, authRouter, instrumentoRouter, promocionRouter, statsRouter, claseRouter, uploadsRouter, auditLogRouter};

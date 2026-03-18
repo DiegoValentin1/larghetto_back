@@ -207,7 +207,7 @@ const insertStudent = async(req, res=Response)=>{
         console.log(req.body);
         const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, empleado, inscripcion, fechaInicio} = req.body;
         await insertLog({empleado, accion:'Estudiante añadido'});
-        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, inscripcion, fechaInicio});
+        const person = await saveStudent({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, nombreMadre, nombrePadre, padreTelefono, madreTelefono, campus, inscripcion, fechaInicio}, req.token);
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -221,7 +221,7 @@ const actualizeStudent = async (req, res = Response) => {
     try {
        const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, empleado, inscripcion, fechaInicio, matricula} = req.body;
        await insertLog({empleado, accion:`Estudiante modificado: ${matricula}`});
-       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, inscripcion, fechaInicio})
+       const person = await updateStudent({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,nivel,mensualidad,promocion, observaciones, clases, user_id, nombreMadre, nombrePadre, padreTelefono, madreTelefono, pagos, inscripcion, fechaInicio}, req.token)
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -254,7 +254,7 @@ const actualizeStudent = async (req, res = Response) => {
             if (emailExists) return res.status(400).json({ message: `El correo ${email} ya está registrado para un encargado o recepcionista` });
         }
         await insertLog({empleado, accion:'Estudiante añadido'});
-        const person = await saveUser({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, password, campus});
+        const person = await saveUser({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role, password, campus}, req.token);
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -271,7 +271,7 @@ const actualizeUser = async (req, res = Response) => {
            if (emailTaken) return res.status(400).json({ message: `El correo ${email} ya está registrado para otro encargado o recepcionista` });
        }
        await insertLog({empleado, accion:'Estudiante actualizado'});
-       const person = await updateUser({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,campus})
+       const person = await updateUser({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,campus}, req.token)
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -288,7 +288,7 @@ const actualizeUser = async (req, res = Response) => {
         console.log(req.body);
         const {name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco, fecha_inicio, comprobante, maestroInstrumentos, campus, empleado} = req.body;
         await insertLog({empleado, accion:'Maestro modificado'});
-        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, campus});
+        const person = await saveTeacher({name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, campus}, req.token);
         res.status(200).json(person);
     } catch (error) {
         console.log(error);
@@ -302,7 +302,7 @@ const actualizeTeacher = async (req, res = Response) => {
         console.log(req.body);
        const {id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, user_id, empleado, clases} = req.body;
        await insertLog({empleado, accion:'Maestro modificado'});
-       const person = await updateTeacher({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, user_id, clases})
+       const person = await updateTeacher({id, name, fechaNacimiento,domicilio,municipio, telefono,contactoEmergencia,email,role,clabe,cuenta,banco,comprobante,fecha_inicio, maestroInstrumentos, user_id, clases}, req.token)
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -332,7 +332,7 @@ const actualizeTeacher = async (req, res = Response) => {
        const{id} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Usuario cambio status'});
-       const person = await remove(id);
+       const person = await remove(id, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -345,7 +345,7 @@ const actualizeTeacher = async (req, res = Response) => {
        const{id} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Usuario eliminado'});
-       const person = await removeEmpleado(id);
+       const person = await removeEmpleado(id, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -384,7 +384,7 @@ const actualizeTeacher = async (req, res = Response) => {
            ? `Estudiante dado de baja: ${matricula}`
            : `Estudiante estatus modificado: ${matricula}`;
        await insertLog({empleado, accion: accionLog});
-       const person = await removeStudent(id, estado);
+       const person = await removeStudent(id, estado, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -412,7 +412,7 @@ const actualizeTeacher = async (req, res = Response) => {
        const{uid, pid} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Estudiante Eliminado Permanentemente'});
-       const person = await removeStudentPermanente(uid, pid);
+       const person = await removeStudentPermanente(uid, pid, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -445,7 +445,7 @@ const solicitarBajaAlumno = async (req, res = Response) => {
 
       await insertLog({empleado, accion: `Solicitud de baja: ${matriculaBaja}`});
 
-      const solicitud = await createSolicitudBaja({alumno_id, solicitante_id, motivo});
+      const solicitud = await createSolicitudBaja({alumno_id, solicitante_id, motivo}, req.token);
       res.status(201).json(solicitud);
    } catch (error) {
       console.log(error);
@@ -478,7 +478,7 @@ const aprobarSolicitud = async (req, res = Response) => {
          solicitud_id: parseInt(id),
          aprobador_id,
          respuesta
-      });
+      }, req.token);
 
       res.status(200).json(result);
    } catch (error) {
@@ -500,7 +500,7 @@ const rechazarSolicitud = async (req, res = Response) => {
          solicitud_id: parseInt(id),
          aprobador_id,
          respuesta
-      });
+      }, req.token);
 
       res.status(200).json(result);
    } catch (error) {
@@ -519,7 +519,7 @@ const deleteMaestroPermanente = async (req, res = Response) => {
       const {id} = req.params;
       const {empleado} = req.body;
 
-      const result = await deleteMaestroSeguro(parseInt(id));
+      const result = await deleteMaestroSeguro(parseInt(id), req.token);
 
       if (result.archived) {
          const detalleLog = result.registros_historicos > 0

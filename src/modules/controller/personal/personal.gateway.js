@@ -1,6 +1,8 @@
 const { hashPassword } = require('../../../utils/functions');
 const { query } = require('../../../utils/mysql');
 const { calcularMensualidadReal } = require('../../../utils/promocion-helper');
+const auditLog = require('../../../utils/auditLog');
+const snapshotReader = require('../../../utils/snapshotReader');
 
 const findAll = async () => {
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
@@ -141,7 +143,7 @@ const findById = async (id) => {
     return await query(sql, [id]);
 }
 
-const saveStudent = async (person) => {
+const saveStudent = async (person, userData = {}) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion) throw Error("Missing fields");
     const nombres = person.name.toUpperCase().split(" ");
@@ -178,6 +180,23 @@ const saveStudent = async (person) => {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [respuesta[0][0].usuarioInsertado, element.maestro, element.instrumento, element.dia, element.hora]);
     }
 
+    if (userData && userData.id) {
+        const newUserId = respuesta[0][0].usuarioInsertado;
+        await auditLog.register({
+            entityType: 'ALUMNO',
+            entityId: newUserId,
+            entityName: `${person.name} (${matricula})`,
+            actionType: 'CREATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: person.campus || userData.campus,
+            summary: `${userData.name || userData.email} creó alumno: ${person.name} (${matricula})`,
+            oldValue: null,
+            newValue: { name: person.name, email: person.email, campus: person.campus, mensualidad: person.mensualidad, nivel: person.nivel }
+        });
+    }
+
     return { ...person }
 }
 
@@ -197,37 +216,82 @@ const checkEmailStaffExcluding = async (email, personalId) => {
     return result.length > 0;
 }
 
-const saveUser = async (person) => {
+const saveUser = async (person, userData = {}) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.password) throw Error("Missing fields");
     const sql = `CALL InsertarUsuario(?,?,?,?,?,?,?,?,?,?)`;
     const hashedPassword = await hashPassword(person.password);
     const { insertedId } = await query(sql, [person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, hashedPassword, person.role, person.campus]);
 
+    if (userData && userData.id) {
+        // Obtener el ID real del usuario recién creado
+        const newUserRows = await query(`SELECT id FROM users WHERE email = ? ORDER BY id DESC LIMIT 1`, [person.email]);
+        const newEntityId = (newUserRows && newUserRows[0]) ? newUserRows[0].id : 0;
+        await auditLog.register({
+            entityType: 'PERSONAL',
+            entityId: newEntityId,
+            actionType: 'CREATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: person.campus || userData.campus,
+            summary: `${userData.name || userData.email} creó ${person.role}: ${person.name}`,
+            oldValue: null,
+            newValue: { name: person.name, email: person.email, role: person.role, campus: person.campus }
+        });
+    }
+
     return { ...person, id: insertedId }
 }
 
-const updateUser = async (person) => {
+const updateUser = async (person, userData = {}) => {
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
-    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role) throw Error("Missing fields");
+
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getPersonalSnapshot(person.id) : null;
+
     const sql = `CALL ActualizarUser(?,?,?,?,?,?,?,?,?)`;
     const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role]);
     if (person.campus) {
         await query(`UPDATE users SET campus=? WHERE personal_id=?`, [person.campus, person.id]);
     }
+
+    if (userData && userData.id) {
+        const { oldFields, newFields } = snapshotReader.getDiff(oldSnapshot, {
+            name: person.name, email: person.email, role: person.role, campus: person.campus,
+            telefono: person.telefono, domicilio: person.domicilio, municipio: person.municipio
+        });
+        await auditLog.register({
+            entityType: 'PERSONAL',
+            entityId: person.id,
+            actionType: 'UPDATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: person.campus || (oldSnapshot && oldSnapshot.campus) || userData.campus,
+            summary: `${userData.name || userData.email} actualizó ${person.role}: ${person.name}`,
+            oldValue: Object.keys(oldFields || {}).length > 0 ? oldFields : oldSnapshot,
+            newValue: Object.keys(newFields || {}).length > 0 ? newFields : { name: person.name, email: person.email, campus: person.campus }
+        });
+    }
+
     return { ...person }
 };
 
-const updateStudent = async (person) => {
+const updateStudent = async (person, userData = {}) => {
     console.log(person);
     //Con esto se valida que id  sea un numero
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
-    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.nivel || !person.mensualidad || !person.promocion || !person.user_id) throw Error("Missing fields");
+
+    // SNAPSHOT: leer ANTES del DELETE+INSERT para preservar estado anterior
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getAlumnoSnapshot(person.user_id) : null;
+
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
     const clasesValidas = (person.clases || []).filter(e => e.maestro && e.instrumento && e.dia && e.hora);
     for (const element of clasesValidas) {
@@ -269,17 +333,17 @@ const updateStudent = async (person) => {
         fecha_referencia: new Date()
     });
 
-    person.pagos && await person.pagos.forEach(async (element) => {
-        // Calcular monto según tipo de pago
-        let monto_registrado = mensualidad_real;
-        if (element.tipo === 2) monto_registrado = mensualidad_real * 0.95; // Descuento 5%
-        if (element.tipo === 3) monto_registrado = mensualidad_real * 1.10; // Recargo 10%
-
-        await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
-            [person.user_id, element.fecha, element.tipo, monto_registrado])
-    });
-    if (person.pagos.length > 0) {
-        const fechaMasAlta = new Date(Math.max(...person.pagos.map(fecha => new Date(fecha.fecha).getTime())));
+    const newPagosConMonto = [];
+    if (person.pagos && person.pagos.length > 0) {
+        for (const element of person.pagos) {
+            let monto_registrado = mensualidad_real;
+            if (element.tipo === 2) monto_registrado = mensualidad_real * 0.95; // Descuento 5%
+            if (element.tipo === 3) monto_registrado = mensualidad_real * 1.10; // Recargo 10%
+            await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
+                [person.user_id, element.fecha, element.tipo, monto_registrado]);
+            newPagosConMonto.push({ fecha: element.fecha, tipo: element.tipo, monto_registrado });
+        }
+        const fechaMasAlta = new Date(Math.max(...person.pagos.map(p => new Date(p.fecha).getTime())));
         fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
         await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
     } else {
@@ -289,7 +353,86 @@ const updateStudent = async (person) => {
     }
     // MODIFICADO: Agregar nueva_fecha_inicio_promo como parámetro (24º)
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-    const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.padreTelefono, person.madreTelefono, person.fechaInicio, person.inscripcion, nueva_fecha_inicio_promo]);
+    const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.madreTelefono, person.padreTelefono, person.fechaInicio, person.inscripcion, nueva_fecha_inicio_promo]);
+
+    if (userData && userData.id && oldSnapshot) {
+        const entityNameStr = oldSnapshot.matricula ? `${person.name} (${oldSnapshot.matricula})` : person.name;
+
+        // 1. Diff solo de campos de datos del alumno (whitelist — sin pagos, clases, ni campos de sistema)
+        const { oldFields, newFields } = snapshotReader.getStudentDataDiff(oldSnapshot, {
+            name: person.name,
+            fechaNacimiento: person.fechaNacimiento,
+            domicilio: person.domicilio,
+            municipio: person.municipio,
+            telefono: person.telefono,
+            contactoEmergencia: person.contactoEmergencia,
+            email: person.email,
+            nivel: person.nivel,
+            mensualidad: person.mensualidad,
+            observaciones: person.observaciones,
+            nombreMadre: person.nombreMadre,
+            nombrePadre: person.nombrePadre,
+            padreTelefono: person.padreTelefono,
+            madreTelefono: person.madreTelefono,
+            inscripcion: person.inscripcion,
+            promocion: person.promocion
+        });
+
+        if (Object.keys(oldFields).length > 0) {
+            await auditLog.register({
+                entityType: 'ALUMNO',
+                entityId: person.user_id,
+                entityName: entityNameStr,
+                actionType: 'UPDATE',
+                userId: userData.id,
+                userName: userData.name || userData.email,
+                userRole: userData.role,
+                campus: oldSnapshot.campus || userData.campus,
+                summary: `${userData.name || userData.email} actualizó datos de alumno: ${person.name} (${oldSnapshot.matricula || ''})`,
+                oldValue: oldFields,
+                newValue: newFields
+            });
+        }
+
+        // 2. Diff de pagos (por contenido, no por ID — se borran y reinsertan)
+        const { hasChanges: pagosChanged, added, removed } = snapshotReader.getPaymentsDiff(
+            oldSnapshot.pagos || [],
+            newPagosConMonto
+        );
+
+        if (pagosChanged) {
+            const TIPO_LABEL = { 1: 'Normal', 2: 'Descuento 5%', 3: 'Recargo 10%' };
+            const fechaStr = (f) => !f ? '' : (f instanceof Date ? f.toISOString().substring(0, 10) : String(f).substring(0, 10));
+            const formatPago = (p) => ({
+                fecha: fechaStr(p.fecha),
+                tipo_label: TIPO_LABEL[p.tipo] || `Tipo ${p.tipo}`,
+                monto: p.monto_registrado != null ? Number(p.monto_registrado).toFixed(2) : '0.00'
+            });
+
+            const resumenPagos = [
+                added.length > 0 ? `+${added.length} agregado${added.length > 1 ? 's' : ''}` : '',
+                removed.length > 0 ? `-${removed.length} eliminado${removed.length > 1 ? 's' : ''}` : ''
+            ].filter(Boolean).join(', ');
+
+            await auditLog.register({
+                entityType: 'ALUMNO',
+                entityId: person.user_id,
+                entityName: entityNameStr,
+                actionType: 'PAGO',
+                userId: userData.id,
+                userName: userData.name || userData.email,
+                userRole: userData.role,
+                campus: oldSnapshot.campus || userData.campus,
+                summary: `${userData.name || userData.email} modificó pagos de ${person.name} (${oldSnapshot.matricula || ''}): ${resumenPagos}`,
+                oldValue: {
+                    added: added.map(formatPago),
+                    removed: removed.map(formatPago)
+                },
+                newValue: null
+            });
+        }
+    }
+
     return { ...person }
 };
 
@@ -302,7 +445,7 @@ const saveStudentAsistencias = async (person) => {
     return { ...person }
 };
 
-const saveTeacher = async (person) => {
+const saveTeacher = async (person, userData = {}) => {
     console.log(person);
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.banco || !person.fecha_inicio) throw Error("Missing fields");
     const sql = `CALL InsertarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
@@ -313,16 +456,34 @@ const saveTeacher = async (person) => {
         await query(`INSERT INTO maestro_instrumento (maestro_id, instrumento_id) values(?,?)`, [respuesta[0][0].usuarioInsertado, element.instrumento_id])
     });
 
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'MAESTRO',
+            entityId: respuesta[0][0].usuarioInsertado,
+            actionType: 'CREATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: person.campus || userData.campus,
+            summary: `${userData.name || userData.email} creó maestro: ${person.name}`,
+            oldValue: null,
+            newValue: { name: person.name, email: person.email, campus: person.campus, banco: person.banco }
+        });
+    }
+
     return { ...person }
 }
 
-const updateTeacher = async (person) => {
+const updateTeacher = async (person, userData = {}) => {
     //Con esto se valida que id  sea un numero
     console.log(person)
     if (Number.isNaN(person.id)) throw Error("Wrong Type");
-    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio 
+    //Valida que el id no venga vacio, Espera que mandes un parametro, Y no uno vacio
     if (!person.id) throw Error("Missing Fields");
     if (!person.name || !person.fechaNacimiento || !person.domicilio || !person.municipio || !person.telefono || !person.contactoEmergencia || !person.email || !person.role || !person.clabe || !person.cuenta || !person.fecha_inicio || !person.banco) throw Error("Missing fields");
+
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getMaestroSnapshot(person.user_id) : null;
+
     await query(`DELETE FROM maestro_clases WHERE id_maestro=?`, [person.user_id])
     person.clases && await person.clases.forEach(async (element) => {
         await query(`INSERT INTO maestro_clases (id_maestro, id_instrumento, dia, hora) values(?,?,?,?)`, [person.user_id, element.instrumento, element.dia, element.hora])
@@ -333,6 +494,27 @@ const updateTeacher = async (person) => {
     });
     const sql = `CALL ActualizarMaestro(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento, person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.clabe, person.cuenta, person.banco, person.fecha_inicio, person.comprobante]);
+
+    if (userData && userData.id) {
+        const { oldFields, newFields } = snapshotReader.getDiff(oldSnapshot, {
+            name: person.name, email: person.email, telefono: person.telefono,
+            domicilio: person.domicilio, municipio: person.municipio, banco: person.banco,
+            cuenta: person.cuenta, clabe: person.clabe
+        });
+        await auditLog.register({
+            entityType: 'MAESTRO',
+            entityId: person.user_id,
+            actionType: 'UPDATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: (oldSnapshot && oldSnapshot.campus) || userData.campus,
+            summary: `${userData.name || userData.email} actualizó maestro: ${person.name}`,
+            oldValue: Object.keys(oldFields || {}).length > 0 ? oldFields : oldSnapshot,
+            newValue: Object.keys(newFields || {}).length > 0 ? newFields : { name: person.name, email: person.email }
+        });
+    }
+
     return { ...person }
 };
 
@@ -358,25 +540,70 @@ const updateTeacherStats = async (person) => {
     return { ...person }
 };
 
-const remove = async (id) => {
+const remove = async (id, userData = {}) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
+
+    // Capturar estado anterior ANTES del toggle
+    const beforeRows = userData && userData.id
+        ? await query(
+            `SELECT us.status, pe.name, us.email FROM users us JOIN personal pe ON pe.id = us.personal_id WHERE us.id=?`,
+            [id]
+          )
+        : null;
+    const beforeStatus = beforeRows && beforeRows[0] ? beforeRows[0].status : null;
+    const personaNombre = beforeRows && beforeRows[0] ? beforeRows[0].name : null;
+    const personaEmail  = beforeRows && beforeRows[0] ? beforeRows[0].email : null;
+
     const sql = `UPDATE users SET status=IF(status = true, false, true) WHERE id=?`;
-    // const sqlLog = `INSERT INTO logs (fecha, autor, accion) VALUES (CURRENT_TIMESTAMP, ?, ?)`;
-    // await query(sqlLog,[autor, accion]);
     await query(sql, [id]);
+
+    if (userData && userData.id) {
+        const nuevoStatus = beforeStatus !== null ? !beforeStatus : null;
+        await auditLog.register({
+            entityType: 'PERSONAL',
+            entityId: parseInt(id),
+            entityName: personaNombre || null,
+            actionType: 'STATUS_CHANGE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: userData.campus,
+            summary: `${userData.name || userData.email} cambió status de ${personaNombre || 'usuario'} a: ${nuevoStatus ? 'activo' : 'inactivo'}`,
+            oldValue: { nombre: personaNombre, email: personaEmail, status: beforeStatus },
+            newValue: { nombre: personaNombre, email: personaEmail, status: nuevoStatus }
+        });
+    }
 
     return { idDeleted: id };
 }
-const removeEmpleado = async (id) => {
+const removeEmpleado = async (id, userData = {}) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
     const sql1 = `SELECT personal_id FROM users WHERE id=?`;
     const sql2 = `DELETE FROM users WHERE id=?`;
     const sql3 = `DELETE FROM personal WHERE id=?`;
     const idPersonal = (await query(sql1, [id]))[0].personal_id;
+
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getPersonalSnapshot(idPersonal) : null;
+
     await query(sql2, [id]);
     await query(sql3, [idPersonal]);
+
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'PERSONAL',
+            entityId: parseInt(id),
+            actionType: 'DELETE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: (oldSnapshot && oldSnapshot.campus) || userData.campus,
+            summary: `${userData.name || userData.email} eliminó empleado: ${oldSnapshot ? oldSnapshot.name : id}`,
+            oldValue: oldSnapshot,
+            newValue: null
+        });
+    }
 
     return { idDeleted: id, idPersonal: idPersonal };
 }
@@ -395,11 +622,53 @@ const getMatriculaByAlumnoId = async (id) => {
     return result[0]?.matricula || id;
 }
 
-const removeStudent = async (id, estado) => {
+const removeStudent = async (id, estado, userData = {}) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
+
+    // Capturar estado anterior ANTES del update
+    let alumnoUserId = parseInt(id);
+    let matricula = null;
+    let alumnoCampus = userData.campus;
+    let alumnoNombre = null;
+    let estadoAnterior = null;
+
+    if (userData && userData.id) {
+        const alumnoRow = await query(
+            `SELECT a.user_id, a.matricula, a.estado, u.campus, pe.name
+             FROM alumno a
+             JOIN users u ON u.id = a.user_id
+             JOIN personal pe ON pe.id = u.personal_id
+             WHERE a.id = ?`,
+            [id]
+        );
+        if (alumnoRow && alumnoRow[0]) {
+            alumnoUserId  = alumnoRow[0].user_id;
+            matricula     = alumnoRow[0].matricula;
+            alumnoCampus  = alumnoRow[0].campus || userData.campus;
+            alumnoNombre  = alumnoRow[0].name;
+            estadoAnterior = alumnoRow[0].estado;
+        }
+    }
+
     const sql = `UPDATE alumno SET estado=? WHERE id=?`;
     await query(sql, [estado, id]);
+
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'ALUMNO',
+            entityId: alumnoUserId,
+            entityName: alumnoNombre && matricula ? `${alumnoNombre} (${matricula})` : (matricula || null),
+            actionType: 'STATUS_CHANGE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: alumnoCampus,
+            summary: `${userData.name || userData.email} cambió estado de alumno ${matricula || ''} a: ${estado}`,
+            oldValue: { matricula, estado: estadoAnterior },
+            newValue: { matricula, estado }
+        });
+    }
 
     return { idDeleted: id };
 }
@@ -413,11 +682,30 @@ const removeStudentAsistencia = async (id_alumno, fecha, id_clase) => {
     return { idDeleted: id_alumno };
 }
 
-const removeStudentPermanente = async (uid, pid) => {
+const removeStudentPermanente = async (uid, pid, userData = {}) => {
     if (Number.isNaN(uid) || Number.isNaN(pid)) throw Error("Wrong Type");
     if (!uid || !pid) throw Error('Missing Fields');
+
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getAlumnoSnapshot(parseInt(uid)) : null;
+
     const sql = `CALL EliminarAlumno(?,?)`;
     await query(sql, [uid, pid]);
+
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'ALUMNO',
+            entityId: parseInt(uid),
+            entityName: oldSnapshot ? `${oldSnapshot.name} (${oldSnapshot.matricula || ''})` : null,
+            actionType: 'DELETE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: (oldSnapshot && oldSnapshot.campus) || userData.campus,
+            summary: `${userData.name || userData.email} eliminó permanentemente alumno: ${oldSnapshot ? oldSnapshot.name : uid} (${oldSnapshot?.matricula || ''})`,
+            oldValue: oldSnapshot,
+            newValue: null
+        });
+    }
 
     return { idDeleted: uid };
 }
@@ -446,7 +734,7 @@ const removeAccents = (str) => {
 // FUNCIONES DE SOLICITUDES DE BAJA
 // ========================================
 
-const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}) => {
+const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}, userData = {}) => {
     if (Number.isNaN(alumno_id) || Number.isNaN(solicitante_id)) throw Error("Wrong Type");
     if (!alumno_id || !solicitante_id || !motivo) throw Error('Missing Fields');
 
@@ -458,6 +746,21 @@ const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}) => {
 
     const sql = `INSERT INTO solicitudes_baja (alumno_id, solicitante_id, motivo) VALUES (?, ?, ?)`;
     const result = await query(sql, [alumno_id, solicitante_id, motivo]);
+
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'SOLICITUD_BAJA',
+            entityId: result.insertId,
+            actionType: 'BAJA_SOLICITADA',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: userData.campus,
+            summary: `${userData.name || userData.email} solicitó baja para alumno ID: ${alumno_id}`,
+            oldValue: null,
+            newValue: { alumno_id, motivo }
+        });
+    }
 
     return { id: result.insertId, alumno_id, solicitante_id, motivo };
 };
@@ -513,7 +816,7 @@ const findSolicitudesBaja = async (estado, campus) => {
     return result;
 };
 
-const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => {
+const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}, userData = {}) => {
     if (Number.isNaN(solicitud_id) || Number.isNaN(aprobador_id)) throw Error("Wrong Type");
     if (!solicitud_id || !aprobador_id) throw Error('Missing Fields');
 
@@ -548,6 +851,23 @@ const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => 
     const sqlInactivar = `UPDATE alumno SET estado = 0 WHERE id = ?`;
     await query(sqlInactivar, [alumno_id]);
 
+    if (userData && userData.id) {
+        const campusRow = await query(`SELECT campus FROM users WHERE id = ?`, [alumno_user_id]);
+        const alumnoCampus = campusRow && campusRow[0] ? campusRow[0].campus : userData.campus;
+        await auditLog.register({
+            entityType: 'SOLICITUD_BAJA',
+            entityId: solicitud_id,
+            actionType: 'BAJA_APROBADA',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: alumnoCampus,
+            summary: `${userData.name || userData.email} aprobó baja de alumno ID: ${alumno_user_id}`,
+            oldValue: { estado: 'PENDIENTE' },
+            newValue: { estado: 'APROBADA', respuesta: respuesta || 'Aprobado' }
+        });
+    }
+
     return {
         solicitud_id,
         aprobador_id,
@@ -556,7 +876,7 @@ const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => 
     };
 };
 
-const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) => {
+const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}, userData = {}) => {
     if (Number.isNaN(solicitud_id) || Number.isNaN(aprobador_id)) throw Error("Wrong Type");
     if (!solicitud_id || !aprobador_id || !respuesta) throw Error('Missing Fields');
 
@@ -570,6 +890,21 @@ const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) =>
     `;
     await query(sql, [respuesta, aprobador_id, solicitud_id]);
 
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'SOLICITUD_BAJA',
+            entityId: solicitud_id,
+            actionType: 'BAJA_RECHAZADA',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: userData.campus,
+            summary: `${userData.name || userData.email} rechazó solicitud de baja ID: ${solicitud_id}`,
+            oldValue: { estado: 'PENDIENTE' },
+            newValue: { estado: 'RECHAZADA', respuesta }
+        });
+    }
+
     return { solicitud_id, aprobador_id, message: 'Solicitud rechazada' };
 };
 
@@ -577,7 +912,7 @@ const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}) =>
 // ELIMINACIÓN SEGURA DE MAESTROS
 // ========================================
 
-const deleteMaestroSeguro = async (user_id) => {
+const deleteMaestroSeguro = async (user_id, userData = {}) => {
     if (Number.isNaN(user_id)) throw Error("Wrong Type");
     if (!user_id) throw Error('Missing Fields');
 
@@ -619,12 +954,28 @@ const deleteMaestroSeguro = async (user_id) => {
 
     // PASO 2: SIEMPRE ARCHIVAR (status = 0)
     // Ya no eliminamos maestros - todos van a "Archivados"
+    const oldSnapshot = (userData && userData.id) ? await snapshotReader.getMaestroSnapshot(user_id) : null;
     const sqlArchivar = `UPDATE users SET status = 0 WHERE id = ?`;
     await query(sqlArchivar, [user_id]);
 
     const mensajeDetalle = totalRegistros > 0
         ? `El maestro tiene ${totalRegistros} registro(s) histórico(s): ${detalles.join(', ')}.`
         : `El maestro no tiene historial académico.`;
+
+    if (userData && userData.id) {
+        await auditLog.register({
+            entityType: 'MAESTRO',
+            entityId: parseInt(user_id),
+            actionType: 'ARCHIVE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: (oldSnapshot && oldSnapshot.campus) || userData.campus,
+            summary: `${userData.name || userData.email} archivó maestro: ${oldSnapshot ? oldSnapshot.name : user_id}`,
+            oldValue: oldSnapshot ? { status: 1 } : null,
+            newValue: { status: 0, archived: true }
+        });
+    }
 
     return {
         deleted: false,

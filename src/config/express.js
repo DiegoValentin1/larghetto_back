@@ -2,7 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const { auth } = require('./jwt');
-const {personalRouter, instrumentoRouter, promocionRouter, authRouter, statsRouter, claseRouter, uploadsRouter} = require('../modules/controller/routes');
+const {personalRouter, instrumentoRouter, promocionRouter, authRouter, statsRouter, claseRouter, uploadsRouter, auditLogRouter} = require('../modules/controller/routes');
 
 const app = express();
 
@@ -25,5 +25,6 @@ app.use('/api/promocion', auth, promocionRouter);
 app.use('/api/stats', auth, statsRouter);
 app.use('/api/clase', auth, claseRouter);
 app.use('/api/uploads', auth, uploadsRouter);
+app.use('/api/audit-log', auth, auditLogRouter);
 module.exports = {app};
 
