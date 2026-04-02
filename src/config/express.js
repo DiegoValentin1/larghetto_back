@@ -22,7 +22,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/personal', auth, personalRouter);
 app.use('/api/instrumento', auth, instrumentoRouter);
 app.use('/api/promocion', auth, promocionRouter);
-app.use('/api/stats', auth, statsRouter);
+app.use('/api/stats', (req, res, next) => { if (req.path === '/save/' || req.path === '/save') return next(); return auth(req, res, next); }, statsRouter);
 app.use('/api/clase', auth, claseRouter);
 app.use('/api/uploads', auth, uploadsRouter);
 module.exports = {app};
