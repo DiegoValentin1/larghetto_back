@@ -38,10 +38,10 @@ const client = mysql.createPool({
 const query = (sql, params) => {
   return new Promise((resolve, reject) => {
     client.getConnection((err, conn) => {
-      if (err) reject(err);
+      if (err) return reject(err);
       conn.query(sql, params, (err, rows) => {
-        if (err) reject(err);
         conn.release();
+        if (err) return reject(err);
         resolve(rows);
       })
     })
