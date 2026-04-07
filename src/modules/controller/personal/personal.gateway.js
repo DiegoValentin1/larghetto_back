@@ -230,6 +230,7 @@ const saveUser = async (person, userData = {}) => {
         await auditLog.register({
             entityType: 'PERSONAL',
             entityId: newEntityId,
+            entityName: person.name,
             actionType: 'CREATE',
             userId: userData.id,
             userName: userData.name || userData.email,
@@ -267,6 +268,7 @@ const updateUser = async (person, userData = {}) => {
         await auditLog.register({
             entityType: 'PERSONAL',
             entityId: person.id,
+            entityName: (oldSnapshot && oldSnapshot.name) || person.name,
             actionType: 'UPDATE',
             userId: userData.id,
             userName: userData.name || userData.email,
@@ -436,12 +438,47 @@ const updateStudent = async (person, userData = {}) => {
     return { ...person }
 };
 
-const saveStudentAsistencias = async (person) => {
+const saveStudentAsistencias = async (person, userData = {}) => {
     console.log(person);
     if (Number.isNaN(person.id_alumno)) throw Error("Wrong Type");
     if (!person.id_alumno || !person.fecha || !person.id_clase) throw Error("Missing Fields");
     const sql = `INSERT INTO alumno_asistencias (id_alumno, fecha, id_clase) VALUES (?,?,?)`;
-    const { insertedId } = await query(sql, [person.id_alumno, person.fecha, person.id_clase]);
+    await query(sql, [person.id_alumno, person.fecha, person.id_clase]);
+
+    if (userData && userData.id) {
+        const [alumnoRows, claseRows] = await Promise.all([
+            query(
+                `SELECT pe.name, al.matricula, us.campus FROM users us JOIN personal pe ON pe.id = us.personal_id JOIN alumno al ON al.user_id = us.id WHERE us.id = ? LIMIT 1`,
+                [person.id_alumno]
+            ),
+            query(
+                `SELECT alc.dia, alc.hora, ins.instrumento, pe.name AS maestro_name FROM alumno_clases alc JOIN instrumento ins ON ins.id = alc.id_instrumento JOIN users us ON us.id = alc.id_maestro JOIN personal pe ON pe.id = us.personal_id WHERE alc.id = ? LIMIT 1`,
+                [person.id_clase]
+            )
+        ]);
+        const alumno = alumnoRows[0] || {};
+        const clase  = claseRows[0]  || {};
+        const alumnoLabel = alumno.name && alumno.matricula
+            ? `${alumno.name} (${alumno.matricula})`
+            : `ID: ${person.id_alumno}`;
+        const claseLabel = clase.dia
+            ? `${clase.instrumento} — ${clase.dia} ${clase.hora} con ${clase.maestro_name}`
+            : `Clase #${person.id_clase}`;
+        await auditLog.register({
+            entityType: 'ALUMNO',
+            entityId: person.id_alumno,
+            entityName: alumnoLabel,
+            actionType: 'ASISTENCIA',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: alumno.campus || userData.campus || null,
+            summary: `${userData.name || userData.email} registró asistencia de ${alumnoLabel} — ${person.fecha}`,
+            oldValue: null,
+            newValue: { alumno: alumnoLabel, clase: claseLabel, fecha: person.fecha }
+        });
+    }
+
     return { ...person }
 };
 
@@ -460,6 +497,7 @@ const saveTeacher = async (person, userData = {}) => {
         await auditLog.register({
             entityType: 'MAESTRO',
             entityId: respuesta[0][0].usuarioInsertado,
+            entityName: person.name,
             actionType: 'CREATE',
             userId: userData.id,
             userName: userData.name || userData.email,
@@ -504,6 +542,7 @@ const updateTeacher = async (person, userData = {}) => {
         await auditLog.register({
             entityType: 'MAESTRO',
             entityId: person.user_id,
+            entityName: (oldSnapshot && oldSnapshot.name) || person.name,
             actionType: 'UPDATE',
             userId: userData.id,
             userName: userData.name || userData.email,
@@ -547,13 +586,14 @@ const remove = async (id, userData = {}) => {
     // Capturar estado anterior ANTES del toggle
     const beforeRows = userData && userData.id
         ? await query(
-            `SELECT us.status, pe.name, us.email FROM users us JOIN personal pe ON pe.id = us.personal_id WHERE us.id=?`,
+            `SELECT us.status, us.campus, pe.name, us.email FROM users us JOIN personal pe ON pe.id = us.personal_id WHERE us.id=?`,
             [id]
           )
         : null;
-    const beforeStatus = beforeRows && beforeRows[0] ? beforeRows[0].status : null;
+    const beforeStatus  = beforeRows && beforeRows[0] ? beforeRows[0].status : null;
     const personaNombre = beforeRows && beforeRows[0] ? beforeRows[0].name : null;
     const personaEmail  = beforeRows && beforeRows[0] ? beforeRows[0].email : null;
+    const personaCampus = beforeRows && beforeRows[0] ? beforeRows[0].campus : null;
 
     const sql = `UPDATE users SET status=IF(status = true, false, true) WHERE id=?`;
     await query(sql, [id]);
@@ -568,7 +608,7 @@ const remove = async (id, userData = {}) => {
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,
-            campus: userData.campus,
+            campus: personaCampus || userData.campus,
             summary: `${userData.name || userData.email} cambió status de ${personaNombre || 'usuario'} a: ${nuevoStatus ? 'activo' : 'inactivo'}`,
             oldValue: { nombre: personaNombre, email: personaEmail, status: beforeStatus },
             newValue: { nombre: personaNombre, email: personaEmail, status: nuevoStatus }
@@ -594,6 +634,7 @@ const removeEmpleado = async (id, userData = {}) => {
         await auditLog.register({
             entityType: 'PERSONAL',
             entityId: parseInt(id),
+            entityName: oldSnapshot ? oldSnapshot.name : null,
             actionType: 'DELETE',
             userId: userData.id,
             userName: userData.name || userData.email,
@@ -673,11 +714,45 @@ const removeStudent = async (id, estado, userData = {}) => {
     return { idDeleted: id };
 }
 
-const removeStudentAsistencia = async (id_alumno, fecha, id_clase) => {
+const removeStudentAsistencia = async (id_alumno, fecha, id_clase, userData = {}) => {
     if (Number.isNaN(id_alumno)) throw Error("Wrong Type");
     if (!id_alumno) throw Error('Missing Fields');
     const sql = `DELETE FROM alumno_asistencias WHERE id_alumno=? AND fecha=? AND id_clase=?`;
     await query(sql, [id_alumno, fecha, id_clase]);
+
+    if (userData && userData.id) {
+        const [alumnoRows, claseRows] = await Promise.all([
+            query(
+                `SELECT pe.name, al.matricula, us.campus FROM users us JOIN personal pe ON pe.id = us.personal_id JOIN alumno al ON al.user_id = us.id WHERE us.id = ? LIMIT 1`,
+                [id_alumno]
+            ),
+            query(
+                `SELECT alc.dia, alc.hora, ins.instrumento, pe.name AS maestro_name FROM alumno_clases alc JOIN instrumento ins ON ins.id = alc.id_instrumento JOIN users us ON us.id = alc.id_maestro JOIN personal pe ON pe.id = us.personal_id WHERE alc.id = ? LIMIT 1`,
+                [id_clase]
+            )
+        ]);
+        const alumno = alumnoRows[0] || {};
+        const clase  = claseRows[0]  || {};
+        const alumnoLabel = alumno.name && alumno.matricula
+            ? `${alumno.name} (${alumno.matricula})`
+            : `ID: ${id_alumno}`;
+        const claseLabel = clase.dia
+            ? `${clase.instrumento} — ${clase.dia} ${clase.hora} con ${clase.maestro_name}`
+            : `Clase #${id_clase}`;
+        await auditLog.register({
+            entityType: 'ALUMNO',
+            entityId: parseInt(id_alumno),
+            entityName: alumnoLabel,
+            actionType: 'ASISTENCIA',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: alumno.campus || userData.campus || null,
+            summary: `${userData.name || userData.email} eliminó asistencia de ${alumnoLabel} — ${fecha}`,
+            oldValue: { alumno: alumnoLabel, clase: claseLabel, fecha },
+            newValue: null
+        });
+    }
 
     return { idDeleted: id_alumno };
 }
@@ -744,6 +819,24 @@ const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}, userData
     );
     if (existing.length > 0) throw Object.assign(Error('Ya existe una solicitud de baja pendiente para este alumno'), { statusCode: 409 });
 
+    // Obtener nombre+matrícula del alumno y campus del solicitante para audit log
+    const [alumnoInfo, solicitanteInfo] = await Promise.all([
+        query(
+            `SELECT al.matricula, pe.name FROM alumno al JOIN users us ON us.id = al.user_id JOIN personal pe ON pe.id = us.personal_id WHERE al.id = ?`,
+            [alumno_id]
+        ),
+        userData.id
+            ? query(`SELECT campus FROM users WHERE id = ?`, [userData.id])
+            : Promise.resolve([])
+    ]);
+
+    const alumnoNombre   = alumnoInfo[0]?.name      || null;
+    const alumnoMatricula = alumnoInfo[0]?.matricula || null;
+    const campus         = solicitanteInfo[0]?.campus || userData.campus || null;
+    const alumnoLabel    = alumnoNombre && alumnoMatricula
+        ? `${alumnoNombre} (${alumnoMatricula})`
+        : `ID: ${alumno_id}`;
+
     const sql = `INSERT INTO solicitudes_baja (alumno_id, solicitante_id, motivo) VALUES (?, ?, ?)`;
     const result = await query(sql, [alumno_id, solicitante_id, motivo]);
 
@@ -751,14 +844,15 @@ const createSolicitudBaja = async ({alumno_id, solicitante_id, motivo}, userData
         await auditLog.register({
             entityType: 'SOLICITUD_BAJA',
             entityId: result.insertId,
+            entityName: alumnoLabel,
             actionType: 'BAJA_SOLICITADA',
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,
-            campus: userData.campus,
-            summary: `${userData.name || userData.email} solicitó baja para alumno ID: ${alumno_id}`,
+            campus,
+            summary: `${userData.name || userData.email} solicitó baja para alumno: ${alumnoLabel}`,
             oldValue: null,
-            newValue: { alumno_id, motivo }
+            newValue: { alumno_id, matricula: alumnoMatricula, motivo }
         });
     }
 
@@ -852,17 +946,25 @@ const aprobarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}, use
     await query(sqlInactivar, [alumno_id]);
 
     if (userData && userData.id) {
-        const campusRow = await query(`SELECT campus FROM users WHERE id = ?`, [alumno_user_id]);
-        const alumnoCampus = campusRow && campusRow[0] ? campusRow[0].campus : userData.campus;
+        const alumnoInfoRows = await query(
+            `SELECT us.campus, al.matricula, pe.name FROM users us JOIN personal pe ON pe.id = us.personal_id JOIN alumno al ON al.user_id = us.id WHERE us.id = ? LIMIT 1`,
+            [alumno_user_id]
+        );
+        const alumnoInfo = alumnoInfoRows[0] || {};
+        const alumnoCampus = alumnoInfo.campus || userData.campus;
+        const alumnoLabel  = alumnoInfo.name && alumnoInfo.matricula
+            ? `${alumnoInfo.name} (${alumnoInfo.matricula})`
+            : `ID: ${alumno_user_id}`;
         await auditLog.register({
             entityType: 'SOLICITUD_BAJA',
             entityId: solicitud_id,
+            entityName: alumnoLabel,
             actionType: 'BAJA_APROBADA',
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,
             campus: alumnoCampus,
-            summary: `${userData.name || userData.email} aprobó baja de alumno ID: ${alumno_user_id}`,
+            summary: `${userData.name || userData.email} aprobó baja de alumno: ${alumnoLabel}`,
             oldValue: { estado: 'PENDIENTE' },
             newValue: { estado: 'APROBADA', respuesta: respuesta || 'Aprobado' }
         });
@@ -880,6 +982,10 @@ const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}, us
     if (Number.isNaN(solicitud_id) || Number.isNaN(aprobador_id)) throw Error("Wrong Type");
     if (!solicitud_id || !aprobador_id || !respuesta) throw Error('Missing Fields');
 
+    // Obtener alumno_id de la solicitud para luego traer nombre/matrícula/campus
+    const solicitudRows = await query(`SELECT alumno_id FROM solicitudes_baja WHERE id = ?`, [solicitud_id]);
+    const alumno_user_id = solicitudRows[0]?.alumno_id || null;
+
     const sql = `
         UPDATE solicitudes_baja
         SET estado = 'RECHAZADA',
@@ -891,15 +997,27 @@ const rechazarSolicitudBaja = async ({solicitud_id, aprobador_id, respuesta}, us
     await query(sql, [respuesta, aprobador_id, solicitud_id]);
 
     if (userData && userData.id) {
+        let alumnoLabel = `ID: ${alumno_user_id}`;
+        let campus = userData.campus || null;
+        if (alumno_user_id) {
+            const alumnoInfoRows = await query(
+                `SELECT us.campus, al.matricula, pe.name FROM users us JOIN personal pe ON pe.id = us.personal_id JOIN alumno al ON al.user_id = us.id WHERE us.id = ? LIMIT 1`,
+                [alumno_user_id]
+            );
+            const info = alumnoInfoRows[0] || {};
+            campus = info.campus || campus;
+            if (info.name && info.matricula) alumnoLabel = `${info.name} (${info.matricula})`;
+        }
         await auditLog.register({
             entityType: 'SOLICITUD_BAJA',
             entityId: solicitud_id,
+            entityName: alumnoLabel,
             actionType: 'BAJA_RECHAZADA',
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,
-            campus: userData.campus,
-            summary: `${userData.name || userData.email} rechazó solicitud de baja ID: ${solicitud_id}`,
+            campus,
+            summary: `${userData.name || userData.email} rechazó baja de alumno: ${alumnoLabel}`,
             oldValue: { estado: 'PENDIENTE' },
             newValue: { estado: 'RECHAZADA', respuesta }
         });
@@ -966,6 +1084,7 @@ const deleteMaestroSeguro = async (user_id, userData = {}) => {
         await auditLog.register({
             entityType: 'MAESTRO',
             entityId: parseInt(user_id),
+            entityName: oldSnapshot ? oldSnapshot.name : null,
             actionType: 'ARCHIVE',
             userId: userData.id,
             userName: userData.name || userData.email,

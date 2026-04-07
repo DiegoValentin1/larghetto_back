@@ -235,7 +235,7 @@ const actualizeStudent = async (req, res = Response) => {
     try {
        const {id_alumno, fecha, empleado, id_clase} = req.body;
        await insertLog({empleado, accion:'Asistencia Añadida'});
-       const person = await saveStudentAsistencias({id_alumno, fecha, id_clase})
+       const person = await saveStudentAsistencias({id_alumno, fecha, id_clase}, req.token)
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -398,7 +398,7 @@ const actualizeTeacher = async (req, res = Response) => {
        const{id_alumno, fecha, id_clase} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Estudiante asistencia eliminada'});
-       const person = await removeStudentAsistencia(id_alumno, fecha, id_clase);
+       const person = await removeStudentAsistencia(id_alumno, fecha, id_clase, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);

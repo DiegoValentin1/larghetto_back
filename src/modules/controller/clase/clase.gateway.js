@@ -82,4 +82,61 @@ const findHorarioAllByMaestro = async (id) => {
 //     return{ idDeleted:id };
 // }
 
-module.exports = { findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus };
+/**
+ * Devuelve los alumnos de una clase específica con estado de asistencia para una fecha dada.
+ * Usado para el pase de lista desde el calendario del maestro.
+ */
+const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fecha) => {
+    const sql = `
+        SELECT
+            alc.id          AS id_clase,
+            alc.id_alumno,
+            pe.name,
+            al.matricula,
+            CASE WHEN aa.id IS NOT NULL THEN 1 ELSE 0 END AS asistio
+        FROM alumno_clases alc
+        JOIN users us       ON us.id       = alc.id_alumno
+        JOIN personal pe    ON pe.id       = us.personal_id
+        JOIN alumno al      ON al.user_id  = alc.id_alumno
+        JOIN instrumento ins ON ins.id     = alc.id_instrumento
+        LEFT JOIN alumno_asistencias aa
+            ON aa.id_alumno = alc.id_alumno
+           AND aa.id_clase  = alc.id
+           AND DATE(aa.fecha) = ?
+        WHERE alc.id_maestro = ?
+          AND alc.dia        = ?
+          AND alc.hora       = ?
+          AND ins.instrumento = ?
+          AND us.role = 'ALUMNO'
+          AND (al.estado != 0 OR aa.id IS NOT NULL)
+        ORDER BY pe.name
+    `;
+    return await query(sql, [fecha, maestro_id, dia, hora, instrumento]);
+};
+
+/**
+ * Devuelve el historial de pases de lista del maestro, agrupado por fecha+clase.
+ */
+const findHistorialByMaestro = async (maestro_id, limit = 20) => {
+    const sql = `
+        SELECT
+            DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d')                           AS fecha,
+            alc.dia,
+            alc.hora,
+            ins.instrumento,
+            COUNT(DISTINCT aa.id_alumno)                                      AS total_presentes,
+            GROUP_CONCAT(DISTINCT pe.name ORDER BY pe.name SEPARATOR ', ')    AS nombres
+        FROM alumno_asistencias aa
+        JOIN alumno_clases alc  ON alc.id    = aa.id_clase
+        JOIN instrumento ins    ON ins.id    = alc.id_instrumento
+        JOIN users us           ON us.id     = aa.id_alumno
+        JOIN personal pe        ON pe.id     = us.personal_id
+        WHERE alc.id_maestro = ?
+        GROUP BY DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d'), alc.dia, alc.hora, ins.instrumento
+        ORDER BY DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d') DESC, alc.hora ASC
+        LIMIT ?
+    `;
+    return await query(sql, [maestro_id, parseInt(limit)]);
+};
+
+module.exports = { findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus, findAlumnosByClaseDetalle, findHistorialByMaestro };
