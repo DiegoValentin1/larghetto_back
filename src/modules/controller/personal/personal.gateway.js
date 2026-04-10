@@ -1,8 +1,9 @@
 const { hashPassword } = require('../../../utils/functions');
-const { query } = require('../../../utils/mysql');
+const { query, getConnection } = require('../../../utils/mysql');
 const { calcularMensualidadReal } = require('../../../utils/promocion-helper');
 const auditLog = require('../../../utils/auditLog');
 const snapshotReader = require('../../../utils/snapshotReader');
+const { RECARGO_PORCENTAJE, DESCUENTO_PORCENTAJE, DIA_LIMITE_PAGO } = require('../../../config/pagos.config');
 
 const findAll = async () => {
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
@@ -299,8 +300,6 @@ const updateStudent = async (person, userData = {}) => {
     for (const element of clasesValidas) {
         await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora]);
     }
-    await query(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id])
-
     // MODIFICADO: Obtener datos incluyendo duracion_meses y fecha_inicio_promo
     const alumnoData = await query(`
         SELECT
@@ -335,24 +334,42 @@ const updateStudent = async (person, userData = {}) => {
         fecha_referencia: new Date()
     });
 
+    // TRANSACCIÓN: DELETE + INSERT de alumno_pagos en una sola conexión atómica
     const newPagosConMonto = [];
-    if (person.pagos && person.pagos.length > 0) {
-        for (const element of person.pagos) {
-            let monto_registrado = mensualidad_real;
-            if (element.tipo === 2) monto_registrado = mensualidad_real * 0.95; // Descuento 5%
-            if (element.tipo === 3) monto_registrado = mensualidad_real * 1.10; // Recargo 10%
-            await query(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
-                [person.user_id, element.fecha, element.tipo, monto_registrado]);
-            newPagosConMonto.push({ fecha: element.fecha, tipo: element.tipo, monto_registrado });
+    const conn = await getConnection();
+    const connQuery = (sql, params) => new Promise((resolve, reject) => {
+        conn.query(sql, params, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+    try {
+        await connQuery('START TRANSACTION', []);
+        await connQuery(`DELETE FROM alumno_pagos WHERE alumno_id=?`, [person.user_id]);
+        if (person.pagos && person.pagos.length > 0) {
+            for (const element of person.pagos) {
+                let monto_registrado = mensualidad_real;
+                if (element.tipo === 2) monto_registrado = mensualidad_real * (1 - DESCUENTO_PORCENTAJE); // Descuento 5%
+                if (element.tipo === 3) monto_registrado = mensualidad_real * (1 + RECARGO_PORCENTAJE); // Recargo 10%
+                await connQuery(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
+                    [person.user_id, element.fecha, element.tipo, monto_registrado]);
+                newPagosConMonto.push({ fecha: element.fecha, tipo: element.tipo, monto_registrado });
+            }
+            const fechaMasAlta = new Date(Math.max(...person.pagos.map(p => new Date(p.fecha).getTime())));
+            fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
+            await connQuery(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
+        } else {
+            const fechaActual = new Date(`${new Date().getFullYear()}-01-01T00:00:00`);
+            fechaActual.setMonth(fechaActual.getMonth() - 1);
+            await connQuery(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaActual]);
         }
-        const fechaMasAlta = new Date(Math.max(...person.pagos.map(p => new Date(p.fecha).getTime())));
-        fechaMasAlta.setHours(fechaMasAlta.getHours() + 12);
-        await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaMasAlta]);
-    } else {
-        const fechaActual = new Date(`${new Date().getFullYear()}-01-01T00:00:00`);
-        fechaActual.setMonth(fechaActual.getMonth() - 1);
-        await query(`CALL ActualizarProximoPago(?,?)`, [person.user_id, fechaActual]);
+        await connQuery('COMMIT', []);
+    } catch (e) {
+        await connQuery('ROLLBACK', []);
+        conn.release();
+        throw e;
     }
+    conn.release();
     // MODIFICADO: Agregar nueva_fecha_inicio_promo como parámetro (24º)
     const sql = `CALL ActualizarPersonalUsuarioAlumno(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const { insertedId } = await query(sql, [person.id, person.name, person.fechaNacimiento.substring(0, 10), person.domicilio, person.municipio, person.telefono, person.contactoEmergencia, person.email, person.role, person.nivel, person.mensualidad, person.instrumento, person.maestro, person.hora, person.dia, person.promocion, person.observaciones, person.nombreMadre, person.nombrePadre, person.madreTelefono, person.padreTelefono, person.fechaInicio, person.inscripcion, nueva_fecha_inicio_promo]);
@@ -403,7 +420,7 @@ const updateStudent = async (person, userData = {}) => {
         );
 
         if (pagosChanged) {
-            const TIPO_LABEL = { 1: 'Normal', 2: 'Descuento 5%', 3: 'Recargo 10%' };
+            const TIPO_LABEL = { 1: 'Pago Normal', 2: `Descuento ${Math.round(DESCUENTO_PORCENTAJE * 100)}%`, 3: `Recargo ${Math.round(RECARGO_PORCENTAJE * 100)}%` };
             const fechaStr = (f) => !f ? '' : (f instanceof Date ? f.toISOString().substring(0, 10) : String(f).substring(0, 10));
             const formatPago = (p) => ({
                 fecha: fechaStr(p.fecha),
@@ -411,10 +428,18 @@ const updateStudent = async (person, userData = {}) => {
                 monto: p.monto_registrado != null ? Number(p.monto_registrado).toFixed(2) : '0.00'
             });
 
-            const resumenPagos = [
-                added.length > 0 ? `+${added.length} agregado${added.length > 1 ? 's' : ''}` : '',
-                removed.length > 0 ? `-${removed.length} eliminado${removed.length > 1 ? 's' : ''}` : ''
-            ].filter(Boolean).join(', ');
+            // Construir resumen legible: "Pago Normal $500.00 (2026-04-15), Recargo 10% $550.00 (2026-05-20)"
+            const resumenPagos = newPagosConMonto.length > 0
+                ? newPagosConMonto.map(p => {
+                    const label = TIPO_LABEL[p.tipo] || `Tipo ${p.tipo}`;
+                    const monto = p.monto_registrado != null ? `$${Number(p.monto_registrado).toFixed(2)}` : '$0.00';
+                    const fecha = fechaStr(p.fecha);
+                    return `${label} ${monto} (${fecha})`;
+                }).join(', ')
+                : [
+                    added.length > 0 ? `+${added.length} agregado${added.length > 1 ? 's' : ''}` : '',
+                    removed.length > 0 ? `-${removed.length} eliminado${removed.length > 1 ? 's' : ''}` : ''
+                ].filter(Boolean).join(', ');
 
             await auditLog.register({
                 entityType: 'ALUMNO',

@@ -1,0 +1,5 @@
+module.exports = {
+    RECARGO_PORCENTAJE: 0.10,
+    DESCUENTO_PORCENTAJE: 0.05,
+    DIA_LIMITE_PAGO: 7,
+};

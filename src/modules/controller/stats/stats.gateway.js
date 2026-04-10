@@ -1,6 +1,7 @@
 const { response } = require('express');
 const { query } = require('../../../utils/mysql');
 const { generarSQLDescuentoVigente } = require('../../../utils/promocion-helper');
+const { RECARGO_PORCENTAJE, DIA_LIMITE_PAGO } = require('../../../config/pagos.config');
 
 // Expresión CASE WHEN para calcular descuento vigente (usar en queries)
 // Usa diferencia de meses CALENDARIOS (no días exactos) para contar meses de descuento
@@ -489,6 +490,55 @@ const findHistoricoPagos = async (year) => {
     return await query(sql, [yearParam]);
 };
 
+// ========================================
+// STATS DE RECARGOS
+// ========================================
+
+const findRecargosCampus = async (campus) => {
+    const isTotal = campus === 'total';
+    const sql = `
+        SELECT COALESCE(SUM(ap.monto_registrado), 0) AS total_recargos
+        FROM alumno_pagos ap
+        JOIN alumno al ON ap.alumno_id = al.user_id
+        JOIN users u ON al.user_id = u.id
+        WHERE ${isTotal ? '1=1' : 'u.campus = ?'}
+          AND ap.tipo = 3
+          AND MONTH(ap.fecha) = MONTH(CURDATE())
+          AND YEAR(ap.fecha) = YEAR(CURDATE())
+    `;
+    const rows = await query(sql, isTotal ? [] : [campus]);
+    const totalConRecargo = Number(rows[0]?.total_recargos || 0);
+    // Solo el extra del recargo: monto_registrado = base * 1.10, entonces extra = total * 0.10/1.10
+    return { total_recargos: totalConRecargo * RECARGO_PORCENTAJE / (1 + RECARGO_PORCENTAJE) };
+};
+
+const findRecargosEsperadosCampus = async (campus) => {
+    const isTotal = campus === 'total';
+    const sql = `
+        SELECT
+            COUNT(*) AS cantidad,
+            COALESCE(SUM(al.mensualidad * ?), 0) AS estimado
+        FROM alumno al
+        JOIN users u ON al.user_id = u.id
+        WHERE ${isTotal ? '1=1' : 'u.campus = ?'}
+          AND al.estado = 1
+          AND al.user_id NOT IN (
+              SELECT alumno_id FROM alumno_pagos
+              WHERE MONTH(fecha) = MONTH(CURDATE())
+              AND YEAR(fecha) = YEAR(CURDATE())
+          )
+          AND DAY(CURDATE()) > ?
+    `;
+    const params = isTotal
+        ? [RECARGO_PORCENTAJE, DIA_LIMITE_PAGO]
+        : [RECARGO_PORCENTAJE, campus, DIA_LIMITE_PAGO];
+    const rows = await query(sql, params);
+    return {
+        cantidad: Number(rows[0]?.cantidad || 0),
+        estimado: Number(rows[0]?.estimado || 0)
+    };
+};
+
 module.exports = {
     findAllTotal,
     findAllCentro,
@@ -510,5 +560,8 @@ module.exports = {
     findAllAlumnoFaltantesCampus,
     // Reportes históricos
     findHistoricoAlumnos,
-    findHistoricoPagos
+    findHistoricoPagos,
+    // Recargos
+    findRecargosCampus,
+    findRecargosEsperadosCampus
 };
