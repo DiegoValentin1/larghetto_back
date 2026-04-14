@@ -1,7 +1,7 @@
 const {Response, Router} = require('express');
 const { auth, checkRoles } = require('../../../config/jwt');
 const {validateError} = require('../../../utils/functions');
-const {findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus, findAlumnosByClaseDetalle, findHistorialByMaestro} = require('./clase.gateway');
+const {findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus, findAlumnosByClaseDetalle, findHistorialByMaestro, findPaseListaMensual} = require('./clase.gateway');
 const { insertLog } = require('../stats/stats.gateway');
 
 const getClasesByMaestro = async(req, res=Response)=>{
@@ -129,9 +129,26 @@ const getHistorialByMaestro = async (req, res = Response) => {
     }
 };
 
+const getPaseListaMensual = async (req, res = Response) => {
+    try {
+        const { maestro_id } = req.params;
+        const { year, month } = req.query;
+        if (!year || !month) return res.status(400).json({ message: 'Faltan parámetros: year, month' });
+        const y = parseInt(year), m = parseInt(month);
+        if (isNaN(y) || isNaN(m) || m < 1 || m > 12 || y < 2000 || y > 2100)
+            return res.status(400).json({ message: 'Parámetros inválidos' });
+        const data = await findPaseListaMensual(maestro_id, y, m);
+        res.status(200).json(data);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({ message: validateError(error) });
+    }
+};
+
 const claseRouter = Router();
 
 // Rutas específicas antes de las genéricas /:id para evitar conflictos
+claseRouter.get('/pase-lista/:maestro_id', getPaseListaMensual);
 claseRouter.get('/alumnos/:maestro_id', getAlumnosByClaseDetalle);
 claseRouter.get('/historial/:maestro_id', getHistorialByMaestro);
 claseRouter.get('/maestro/:id/:campus', getClasesByMaestroCampus);

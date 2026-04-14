@@ -93,7 +93,8 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
             alc.id_alumno,
             pe.name,
             al.matricula,
-            CASE WHEN aa.id IS NOT NULL THEN 1 ELSE 0 END AS asistio
+            CASE WHEN aa.id IS NOT NULL THEN 1 ELSE 0 END AS asistio,
+            ar.id           AS id_repo
         FROM alumno_clases alc
         JOIN users us       ON us.id       = alc.id_alumno
         JOIN personal pe    ON pe.id       = us.personal_id
@@ -103,6 +104,10 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
             ON aa.id_alumno = alc.id_alumno
            AND aa.id_clase  = alc.id
            AND DATE(aa.fecha) = ?
+        LEFT JOIN alumno_repo ar
+            ON ar.alumno_id  = alc.id_alumno
+           AND ar.maestro_id = ?
+           AND DATE(ar.fecha) = ?
         WHERE alc.id_maestro = ?
           AND alc.dia        = ?
           AND alc.hora       = ?
@@ -111,7 +116,7 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
           AND (al.estado != 0 OR aa.id IS NOT NULL)
         ORDER BY pe.name
     `;
-    return await query(sql, [fecha, maestro_id, dia, hora, instrumento]);
+    return await query(sql, [fecha, maestro_id, fecha, maestro_id, dia, hora, instrumento]);
 };
 
 /**
@@ -139,4 +144,127 @@ const findHistorialByMaestro = async (maestro_id, limit = 20) => {
     return await query(sql, [maestro_id, parseInt(limit)]);
 };
 
-module.exports = { findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus, findAlumnosByClaseDetalle, findHistorialByMaestro };
+/**
+ * Pase de lista mensual: alumnos × fechas con estado A (asistencia) o R (reposición).
+ * Las columnas (fechas) se derivan del horario registrado del maestro, no de las asistencias.
+ */
+const findPaseListaMensual = async (maestro_id, year, month) => {
+    // Días de semana únicos que tiene el maestro en alumno_clases
+    const sqlDias = `
+        SELECT DISTINCT dia FROM alumno_clases WHERE id_maestro = ?
+    `;
+
+    // Alumnos activos + sus días de clase con este maestro
+    const sqlAlumnos = `
+        SELECT DISTINCT alc.id_alumno AS id, pe.name AS nombre
+        FROM alumno_clases alc
+        JOIN users u    ON u.id       = alc.id_alumno
+        JOIN personal pe ON pe.id    = u.personal_id
+        JOIN alumno al  ON al.user_id = alc.id_alumno
+        WHERE alc.id_maestro = ?
+          AND u.role = 'ALUMNO'
+          AND al.estado != 0
+        ORDER BY pe.name
+    `;
+
+    // Días de cada alumno activo con este maestro
+    const sqlDiasAlumno = `
+        SELECT alc.id_alumno, alc.dia
+        FROM alumno_clases alc
+        JOIN alumno al ON al.user_id = alc.id_alumno
+        WHERE alc.id_maestro = ?
+          AND al.estado != 0
+    `;
+
+    // Asistencias del mes
+    const sqlAsistencias = `
+        SELECT aa.id_alumno, DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d') AS fecha
+        FROM alumno_asistencias aa
+        JOIN alumno_clases alc ON alc.id = aa.id_clase
+        WHERE alc.id_maestro = ?
+          AND MONTH(aa.fecha) = ?
+          AND YEAR(aa.fecha)  = ?
+    `;
+
+    // Repos del mes
+    const sqlRepos = `
+        SELECT ar.alumno_id AS id_alumno, DATE_FORMAT(DATE(ar.fecha), '%Y-%m-%d') AS fecha
+        FROM alumno_repo ar
+        WHERE ar.maestro_id = ?
+          AND MONTH(ar.fecha) = ?
+          AND YEAR(ar.fecha)  = ?
+    `;
+
+    const [diasRows, alumnos, diasAlumnoRows, asistencias, repos] = await Promise.all([
+        query(sqlDias, [maestro_id]),
+        query(sqlAlumnos, [maestro_id]),
+        query(sqlDiasAlumno, [maestro_id]),
+        query(sqlAsistencias, [maestro_id, month, year]),
+        query(sqlRepos, [maestro_id, month, year]),
+    ]);
+
+    // Construir mapa {id_alumno: Set<dia>}
+    const diasPorAlumno = {};
+    for (const { id_alumno, dia } of diasAlumnoRows) {
+        if (!diasPorAlumno[id_alumno]) diasPorAlumno[id_alumno] = new Set();
+        diasPorAlumno[id_alumno].add(dia);
+    }
+
+    // Mapeo de nombre del día (DB) → getDay() de JS
+    const DIAS_DB_DOW = { Domingo: 0, Lunes: 1, Martes: 2, Miercoles: 3, Jueves: 4, Viernes: 5, Sabado: 6 };
+
+    // Expandir cada día de semana a todas sus fechas en el mes dado
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const fechasSet = new Set();
+
+    for (const { dia } of diasRows) {
+        const targetDow = DIAS_DB_DOW[dia];
+        if (targetDow === undefined) continue;
+        for (let d = 1; d <= daysInMonth; d++) {
+            if (new Date(year, month - 1, d).getDay() === targetDow) {
+                fechasSet.add(
+                    `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                );
+            }
+        }
+    }
+
+    const fechas = [...fechasSet].sort();
+
+    // Construir matriz {[id_alumno]: {[fecha]: 'A' | 'R'}}
+    const matriz = {};
+    for (const al of alumnos) matriz[al.id] = {};
+
+    for (const a of asistencias) {
+        if (matriz[a.id_alumno] !== undefined) {
+            matriz[a.id_alumno][a.fecha] = 'A';
+        }
+    }
+    for (const r of repos) {
+        if (matriz[r.id_alumno] !== undefined && !matriz[r.id_alumno][r.fecha]) {
+            matriz[r.id_alumno][r.fecha] = 'R';
+        }
+    }
+
+    // Serializar Sets a arrays
+    const diasPorAlumnoFinal = {};
+    for (const [id, set] of Object.entries(diasPorAlumno)) {
+        diasPorAlumnoFinal[id] = [...set];
+    }
+
+    return {
+        meta: { year: parseInt(year), month: parseInt(month) },
+        fechas,
+        alumnos,
+        matriz,
+        diasPorAlumno: diasPorAlumnoFinal,
+        resumen: {
+            total_fechas: fechas.length,
+            total_alumnos: alumnos.length,
+            total_asistencias: asistencias.length,
+            total_repos: repos.length,
+        },
+    };
+};
+
+module.exports = { findAllByMaestro, findHorarioAllByMaestro, findAllByMaestroCampus, findAlumnosByClaseDetalle, findHistorialByMaestro, findPaseListaMensual };
