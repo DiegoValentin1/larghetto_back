@@ -133,7 +133,8 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
 
         UNION
 
-        -- Alumnos con asistencia huérfana en esta fecha (su id_clase fue borrado al cambiar horario)
+        -- Alumnos con asistencia en esta fecha que ya no están en este horario específico
+        -- (cubre tanto registros huérfanos como alumnos que cambiaron de día)
         SELECT
             aa2.id_clase    AS id_clase,
             aa2.id_alumno,
@@ -146,21 +147,24 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
         JOIN users us2    ON us2.id      = aa2.id_alumno
         JOIN personal pe2 ON pe2.id     = us2.personal_id
         JOIN alumno al2   ON al2.user_id = aa2.id_alumno
-        LEFT JOIN alumno_clases alc2 ON alc2.id = aa2.id_clase
-        WHERE alc2.id IS NULL
-          AND DATE(aa2.fecha) = ?
+        WHERE DATE(aa2.fecha) = ?
+          AND us2.role = 'ALUMNO'
           AND aa2.id_alumno IN (
               SELECT id_alumno FROM alumno_clases WHERE id_maestro = ?
           )
-          AND us2.role = 'ALUMNO'
+          AND aa2.id_alumno NOT IN (
+              SELECT alc_x.id_alumno FROM alumno_clases alc_x
+              JOIN instrumento ins_x ON ins_x.id = alc_x.id_instrumento
+              WHERE alc_x.id_maestro = ? AND alc_x.dia = ? AND alc_x.hora = ? AND ins_x.instrumento = ?
+          )
 
         ORDER BY name
     `;
     return await query(sql, [
-        fecha, fecha, maestro_id, maestro_id,  // subquery asistencia_otra_fecha
-        fecha, maestro_id, fecha,               // LEFT JOINs aa y ar
-        maestro_id, dia, hora, instrumento,     // WHERE principal
-        fecha, maestro_id                       // UNION huérfanas
+        fecha, fecha, maestro_id, maestro_id,           // subquery asistencia_otra_fecha
+        fecha, maestro_id, fecha,                       // LEFT JOINs aa y ar
+        maestro_id, dia, hora, instrumento,             // WHERE principal
+        fecha, maestro_id, maestro_id, dia, hora, instrumento  // UNION: fecha, enrolled, NOT IN mismo horario
     ]);
 };
 
