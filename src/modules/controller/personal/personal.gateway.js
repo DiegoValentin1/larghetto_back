@@ -295,10 +295,25 @@ const updateStudent = async (person, userData = {}) => {
     // SNAPSHOT: leer ANTES del DELETE+INSERT para preservar estado anterior
     const oldSnapshot = (userData && userData.id) ? await snapshotReader.getAlumnoSnapshot(person.user_id) : null;
 
+    // Capturar IDs viejos antes de borrar para poder migrar asistencias
+    const clasesViejas = await query(`SELECT id, id_maestro, id_instrumento FROM alumno_clases WHERE id_alumno=?`, [person.user_id]);
+    const claseViejaMap = {};
+    for (const c of clasesViejas) {
+        claseViejaMap[`${c.id_maestro}_${c.id_instrumento}`] = c.id;
+    }
+
     await query(`DELETE FROM alumno_clases WHERE id_alumno=?`, [person.user_id])
     const clasesValidas = (person.clases || []).filter(e => e.maestro && e.instrumento && e.dia && e.hora);
     for (const element of clasesValidas) {
-        await query(`INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`, [person.user_id, element.maestro, element.instrumento, element.dia, element.hora]);
+        const { insertId } = await query(
+            `INSERT INTO alumno_clases (id_alumno, id_maestro, id_instrumento, dia, hora) values(?,?,?,?,?)`,
+            [person.user_id, element.maestro, element.instrumento, element.dia, element.hora]
+        );
+        // Migrar asistencias del id_clase viejo al nuevo (mismo maestro + instrumento)
+        const viejoId = claseViejaMap[`${element.maestro}_${element.instrumento}`];
+        if (viejoId && insertId) {
+            await query(`UPDATE alumno_asistencias SET id_clase = ? WHERE id_clase = ?`, [insertId, viejoId]);
+        }
     }
     // MODIFICADO: Obtener datos incluyendo duracion_meses y fecha_inicio_promo
     const alumnoData = await query(`

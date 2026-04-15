@@ -94,7 +94,23 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
             pe.name,
             al.matricula,
             CASE WHEN aa.id IS NOT NULL THEN 1 ELSE 0 END AS asistio,
-            ar.id           AS id_repo
+            ar.id           AS id_repo,
+            -- Fecha de asistencia en otra clase de esta semana con este maestro (para mostrar aviso de "slot cubierto")
+            (
+                SELECT DATE_FORMAT(DATE(aw.fecha), '%Y-%m-%d')
+                FROM alumno_asistencias aw
+                LEFT JOIN alumno_clases alc_w ON alc_w.id = aw.id_clase
+                WHERE aw.id_alumno = alc.id_alumno
+                  AND YEARWEEK(aw.fecha, 1) = YEARWEEK(?, 1)
+                  AND DATE(aw.fecha) != ?
+                  AND (
+                      alc_w.id_maestro = ?
+                      OR (alc_w.id IS NULL AND aw.id_alumno IN (
+                          SELECT id_alumno FROM alumno_clases WHERE id_maestro = ?
+                      ))
+                  )
+                LIMIT 1
+            ) AS asistencia_otra_fecha
         FROM alumno_clases alc
         JOIN users us       ON us.id       = alc.id_alumno
         JOIN personal pe    ON pe.id       = us.personal_id
@@ -114,9 +130,38 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
           AND ins.instrumento = ?
           AND us.role = 'ALUMNO'
           AND (al.estado != 0 OR aa.id IS NOT NULL)
-        ORDER BY pe.name
+
+        UNION
+
+        -- Alumnos con asistencia huérfana en esta fecha (su id_clase fue borrado al cambiar horario)
+        SELECT
+            aa2.id_clase    AS id_clase,
+            aa2.id_alumno,
+            pe2.name,
+            al2.matricula,
+            1               AS asistio,
+            NULL            AS id_repo,
+            NULL            AS asistencia_otra_fecha
+        FROM alumno_asistencias aa2
+        JOIN users us2    ON us2.id      = aa2.id_alumno
+        JOIN personal pe2 ON pe2.id     = us2.personal_id
+        JOIN alumno al2   ON al2.user_id = aa2.id_alumno
+        LEFT JOIN alumno_clases alc2 ON alc2.id = aa2.id_clase
+        WHERE alc2.id IS NULL
+          AND DATE(aa2.fecha) = ?
+          AND aa2.id_alumno IN (
+              SELECT id_alumno FROM alumno_clases WHERE id_maestro = ?
+          )
+          AND us2.role = 'ALUMNO'
+
+        ORDER BY name
     `;
-    return await query(sql, [fecha, maestro_id, fecha, maestro_id, dia, hora, instrumento]);
+    return await query(sql, [
+        fecha, fecha, maestro_id, maestro_id,  // subquery asistencia_otra_fecha
+        fecha, maestro_id, fecha,               // LEFT JOINs aa y ar
+        maestro_id, dia, hora, instrumento,     // WHERE principal
+        fecha, maestro_id                       // UNION huérfanas
+    ]);
 };
 
 /**
@@ -176,7 +221,8 @@ const findPaseListaMensual = async (maestro_id, year, month) => {
           AND al.estado != 0
     `;
 
-    // Asistencias del mes
+    // Asistencias del mes — incluye huérfanas (id_clase ya no existe) de alumnos
+    // que actualmente siguen con este maestro
     const sqlAsistencias = `
         SELECT aa.id_alumno, DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d') AS fecha
         FROM alumno_asistencias aa
@@ -184,6 +230,18 @@ const findPaseListaMensual = async (maestro_id, year, month) => {
         WHERE alc.id_maestro = ?
           AND MONTH(aa.fecha) = ?
           AND YEAR(aa.fecha)  = ?
+
+        UNION
+
+        SELECT aa.id_alumno, DATE_FORMAT(DATE(aa.fecha), '%Y-%m-%d') AS fecha
+        FROM alumno_asistencias aa
+        LEFT JOIN alumno_clases alc ON alc.id = aa.id_clase
+        WHERE alc.id IS NULL
+          AND MONTH(aa.fecha) = ?
+          AND YEAR(aa.fecha)  = ?
+          AND aa.id_alumno IN (
+              SELECT id_alumno FROM alumno_clases WHERE id_maestro = ?
+          )
     `;
 
     // Repos del mes
@@ -199,7 +257,7 @@ const findPaseListaMensual = async (maestro_id, year, month) => {
         query(sqlDias, [maestro_id]),
         query(sqlAlumnos, [maestro_id]),
         query(sqlDiasAlumno, [maestro_id]),
-        query(sqlAsistencias, [maestro_id, month, year]),
+        query(sqlAsistencias, [maestro_id, month, year, month, year, maestro_id]),
         query(sqlRepos, [maestro_id, month, year]),
     ]);
 
