@@ -134,7 +134,8 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
         UNION
 
         -- Alumnos con asistencia en esta fecha que ya no están en este horario específico
-        -- (cubre tanto registros huérfanos como alumnos que cambiaron de día)
+        -- Solo aplica si cambiaron de DÍA (o registro huérfano). Si solo cambiaron de hora
+        -- dentro del mismo día, la query principal ya los muestra en el nuevo horario.
         SELECT
             aa2.id_clase    AS id_clase,
             aa2.id_alumno,
@@ -147,6 +148,7 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
         JOIN users us2    ON us2.id      = aa2.id_alumno
         JOIN personal pe2 ON pe2.id     = us2.personal_id
         JOIN alumno al2   ON al2.user_id = aa2.id_alumno
+        LEFT JOIN alumno_clases alc_orig ON alc_orig.id = aa2.id_clase
         WHERE DATE(aa2.fecha) = ?
           AND us2.role = 'ALUMNO'
           AND aa2.id_alumno IN (
@@ -157,6 +159,7 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
               JOIN instrumento ins_x ON ins_x.id = alc_x.id_instrumento
               WHERE alc_x.id_maestro = ? AND alc_x.dia = ? AND alc_x.hora = ? AND ins_x.instrumento = ?
           )
+          AND (alc_orig.id IS NULL OR alc_orig.dia != ?)
 
         ORDER BY name
     `;
@@ -164,7 +167,7 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
         fecha, fecha, maestro_id, maestro_id,           // subquery asistencia_otra_fecha
         fecha, maestro_id, fecha,                       // LEFT JOINs aa y ar
         maestro_id, dia, hora, instrumento,             // WHERE principal
-        fecha, maestro_id, maestro_id, dia, hora, instrumento  // UNION: fecha, enrolled, NOT IN mismo horario
+        fecha, maestro_id, maestro_id, dia, hora, instrumento, dia  // UNION: fecha, enrolled, NOT IN mismo horario, dia!=
     ]);
 };
 
