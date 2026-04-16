@@ -80,9 +80,9 @@ const save = async(instrumento)=>{
 }
 
 const saveRepo = async(instrumento)=>{
-    
-    const sql = `INSERT INTO alumno_repo(fecha, alumno_id, maestro_id) VALUES(?,?,?)`;
-    const {insertedId} = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id ]);
+
+    const sql = `INSERT INTO alumno_repo(fecha, alumno_id, maestro_id, hora, instrumento, fecha_original) VALUES(?,?,?,?,?,?)`;
+    const {insertedId} = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id, instrumento.hora || null, instrumento.instrumento || null, instrumento.fecha_original || null]);
 
     return {...instrumento, id:insertedId}
 }

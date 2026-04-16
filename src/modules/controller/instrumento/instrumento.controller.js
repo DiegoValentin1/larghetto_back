@@ -114,10 +114,9 @@ const insert = async(req, res=Response)=>{
 
 const insertRepo = async(req, res=Response)=>{
     try {
-        const {fecha, alumno_id, maestro_id, empleado} = req.body;
+        const {fecha, alumno_id, maestro_id, empleado, hora, instrumento, fecha_original} = req.body;
         await insertLog({empleado, accion:'Reposición añadida'});
-        console.log(req.body);
-        const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id});
+        const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id, hora, instrumento, fecha_original});
         res.status(200).json(instrumentoObj);
     } catch (error) {
         console.log(error);

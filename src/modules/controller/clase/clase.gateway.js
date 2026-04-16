@@ -110,7 +110,18 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
                       ))
                   )
                 LIMIT 1
-            ) AS asistencia_otra_fecha
+            ) AS asistencia_otra_fecha,
+            -- Fecha de reposición registrada en otra fecha con este maestro (misma semana)
+            (
+                SELECT DATE_FORMAT(DATE(rw.fecha), '%Y-%m-%d')
+                FROM alumno_repo rw
+                WHERE rw.alumno_id = alc.id_alumno
+                  AND rw.maestro_id = ?
+                  AND DATE(rw.fecha) != ?
+                  AND YEARWEEK(rw.fecha, 1) = YEARWEEK(?, 1)
+                LIMIT 1
+            ) AS repo_otra_fecha,
+            NULL AS repo_fecha_original
         FROM alumno_clases alc
         JOIN users us       ON us.id       = alc.id_alumno
         JOIN personal pe    ON pe.id       = us.personal_id
@@ -143,7 +154,9 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
             al2.matricula,
             1               AS asistio,
             NULL            AS id_repo,
-            NULL            AS asistencia_otra_fecha
+            NULL            AS asistencia_otra_fecha,
+            NULL            AS repo_otra_fecha,
+            NULL            AS repo_fecha_original
         FROM alumno_asistencias aa2
         JOIN users us2    ON us2.id      = aa2.id_alumno
         JOIN personal pe2 ON pe2.id     = us2.personal_id
@@ -161,13 +174,54 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
           )
           AND (alc_orig.id IS NULL OR alc_orig.dia != ?)
 
+        UNION
+
+        -- Alumnos con REPOSICIÓN en esta fecha que no están en el roster del día
+        -- Si el repo tiene hora+instrumento guardados, filtra por ellos (slot exacto).
+        -- Si no (repos viejos sin slot), usa el slot del alumno en alumno_clases.
+        SELECT
+            NULL            AS id_clase,
+            ar3.alumno_id   AS id_alumno,
+            pe3.name,
+            al3.matricula,
+            0               AS asistio,
+            ar3.id          AS id_repo,
+            NULL            AS asistencia_otra_fecha,
+            NULL            AS repo_otra_fecha,
+            DATE_FORMAT(ar3.fecha_original, '%Y-%m-%d') AS repo_fecha_original
+        FROM alumno_repo ar3
+        JOIN users us3    ON us3.id      = ar3.alumno_id
+        JOIN personal pe3 ON pe3.id     = us3.personal_id
+        JOIN alumno al3   ON al3.user_id = ar3.alumno_id
+        WHERE ar3.maestro_id = ?
+          AND DATE(ar3.fecha) = ?
+          AND us3.role = 'ALUMNO'
+          AND ar3.alumno_id NOT IN (
+              SELECT alc_x.id_alumno FROM alumno_clases alc_x
+              JOIN instrumento ins_x ON ins_x.id = alc_x.id_instrumento
+              WHERE alc_x.id_maestro = ? AND alc_x.dia = ? AND alc_x.hora = ? AND ins_x.instrumento = ?
+          )
+          AND (
+              -- Repo con slot guardado: mostrar solo en ese hora+instrumento
+              (ar3.hora IS NOT NULL AND ar3.instrumento IS NOT NULL AND ar3.hora = ? AND ar3.instrumento = ?)
+              OR
+              -- Repo sin slot (legacy): mostrar en el slot habitual del alumno con este maestro
+              (ar3.hora IS NULL AND ar3.alumno_id IN (
+                  SELECT alc_m.id_alumno FROM alumno_clases alc_m
+                  JOIN instrumento ins_m ON ins_m.id = alc_m.id_instrumento
+                  WHERE alc_m.id_maestro = ? AND alc_m.hora = ? AND ins_m.instrumento = ?
+              ))
+          )
+
         ORDER BY name
     `;
     return await query(sql, [
         fecha, fecha, maestro_id, maestro_id,           // subquery asistencia_otra_fecha
+        maestro_id, fecha, fecha,                       // subquery repo_otra_fecha
         fecha, maestro_id, fecha,                       // LEFT JOINs aa y ar
         maestro_id, dia, hora, instrumento,             // WHERE principal
-        fecha, maestro_id, maestro_id, dia, hora, instrumento, dia  // UNION: fecha, enrolled, NOT IN mismo horario, dia!=
+        fecha, maestro_id, maestro_id, dia, hora, instrumento, dia,  // UNION asistencias: fecha, enrolled, NOT IN mismo horario, dia!=
+        maestro_id, fecha, maestro_id, dia, hora, instrumento, hora, instrumento, maestro_id, hora, instrumento,  // UNION repos: maestro+fecha, NOT IN, slot exacto o fallback
     ]);
 };
 
