@@ -111,14 +111,15 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
                   )
                 LIMIT 1
             ) AS asistencia_otra_fecha,
-            -- Fecha de reposición registrada en otra fecha con este maestro (misma semana)
+            -- Fecha de reposición registrada en otra fecha con este maestro (ventana ±30 días)
             (
                 SELECT DATE_FORMAT(DATE(rw.fecha), '%Y-%m-%d')
                 FROM alumno_repo rw
                 WHERE rw.alumno_id = alc.id_alumno
                   AND rw.maestro_id = ?
                   AND DATE(rw.fecha) != ?
-                  AND YEARWEEK(rw.fecha, 1) = YEARWEEK(?, 1)
+                  AND rw.fecha BETWEEN DATE_SUB(?, INTERVAL 30 DAY) AND DATE_ADD(?, INTERVAL 30 DAY)
+                ORDER BY ABS(DATEDIFF(rw.fecha, ?))
                 LIMIT 1
             ) AS repo_otra_fecha,
             NULL AS repo_fecha_original
@@ -135,6 +136,8 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
             ON ar.alumno_id  = alc.id_alumno
            AND ar.maestro_id = ?
            AND DATE(ar.fecha) = ?
+           AND (ar.hora IS NULL OR ar.hora = ?)
+           AND (ar.instrumento IS NULL OR ar.instrumento = ?)
         WHERE alc.id_maestro = ?
           AND alc.dia        = ?
           AND alc.hora       = ?
@@ -217,8 +220,8 @@ const findAlumnosByClaseDetalle = async (maestro_id, dia, hora, instrumento, fec
     `;
     return await query(sql, [
         fecha, fecha, maestro_id, maestro_id,           // subquery asistencia_otra_fecha
-        maestro_id, fecha, fecha,                       // subquery repo_otra_fecha
-        fecha, maestro_id, fecha,                       // LEFT JOINs aa y ar
+        maestro_id, fecha, fecha, fecha, fecha,           // subquery repo_otra_fecha (!=, BETWEEN x2, ORDER BY)
+        fecha, maestro_id, fecha, hora, instrumento,    // LEFT JOINs aa y ar (con filtro hora+instrumento)
         maestro_id, dia, hora, instrumento,             // WHERE principal
         fecha, maestro_id, maestro_id, dia, hora, instrumento, dia,  // UNION asistencias: fecha, enrolled, NOT IN mismo horario, dia!=
         maestro_id, fecha, maestro_id, dia, hora, instrumento, hora, instrumento, maestro_id, hora, instrumento,  // UNION repos: maestro+fecha, NOT IN, slot exacto o fallback
