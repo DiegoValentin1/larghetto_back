@@ -5,6 +5,13 @@ const auditLog = require('../../../utils/auditLog');
 const snapshotReader = require('../../../utils/snapshotReader');
 const { RECARGO_PORCENTAJE, DESCUENTO_PORCENTAJE, DIA_LIMITE_PAGO } = require('../../../config/pagos.config');
 
+const formatFechaLegible = (fechaStr) => {
+    if (!fechaStr) return String(fechaStr);
+    const [y, m, d] = String(fechaStr).split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
+};
+
 const findAll = async () => {
     const sql = `SELECT pe.*, us.email, us.role, us.status , us.id as user_id
     FROM personal pe join users us on us.personal_id=pe.id`;
@@ -435,43 +442,38 @@ const updateStudent = async (person, userData = {}) => {
         );
 
         if (pagosChanged) {
-            const TIPO_LABEL = { 1: 'Pago Normal', 2: `Descuento ${Math.round(DESCUENTO_PORCENTAJE * 100)}%`, 3: `Recargo ${Math.round(RECARGO_PORCENTAJE * 100)}%` };
             const fechaStr = (f) => !f ? '' : (f instanceof Date ? f.toISOString().substring(0, 10) : String(f).substring(0, 10));
-            const formatPago = (p) => ({
-                fecha: fechaStr(p.fecha),
-                tipo_label: TIPO_LABEL[p.tipo] || `Tipo ${p.tipo}`,
-                monto: p.monto_registrado != null ? Number(p.monto_registrado).toFixed(2) : '0.00'
-            });
-
-            // Construir resumen legible: "Pago Normal $500.00 (2026-04-15), Recargo 10% $550.00 (2026-05-20)"
-            const resumenPagos = newPagosConMonto.length > 0
-                ? newPagosConMonto.map(p => {
-                    const label = TIPO_LABEL[p.tipo] || `Tipo ${p.tipo}`;
-                    const monto = p.monto_registrado != null ? `$${Number(p.monto_registrado).toFixed(2)}` : '$0.00';
-                    const fecha = fechaStr(p.fecha);
-                    return `${label} ${monto} (${fecha})`;
-                }).join(', ')
-                : [
-                    added.length > 0 ? `+${added.length} agregado${added.length > 1 ? 's' : ''}` : '',
-                    removed.length > 0 ? `-${removed.length} eliminado${removed.length > 1 ? 's' : ''}` : ''
-                ].filter(Boolean).join(', ');
-
-            await auditLog.register({
+            const base = {
                 entityType: 'ALUMNO',
                 entityId: person.user_id,
                 entityName: entityNameStr,
-                actionType: 'PAGO',
                 userId: userData.id,
                 userName: userData.name || userData.email,
                 userRole: userData.role,
                 campus: oldSnapshot.campus || userData.campus,
-                summary: `${userData.name || userData.email} modificó pagos de ${person.name} (${oldSnapshot.matricula || ''}): ${resumenPagos}`,
-                oldValue: {
-                    added: added.map(formatPago),
-                    removed: removed.map(formatPago)
-                },
-                newValue: null
-            });
+            };
+            for (const p of added) {
+                const fecha = fechaStr(p.fecha);
+                const monto = p.monto_registrado != null ? `$${Number(p.monto_registrado).toFixed(2)}` : '';
+                await auditLog.register({
+                    ...base,
+                    actionType: 'PAGO_ADD',
+                    summary: `${userData.name || userData.email} registró pago de ${entityNameStr} — ${fecha} ${monto}`,
+                    oldValue: null,
+                    newValue: { fecha, tipo: p.tipo, monto: p.monto_registrado != null ? Number(p.monto_registrado).toFixed(2) : '0.00' }
+                });
+            }
+            for (const p of removed) {
+                const fecha = fechaStr(p.fecha);
+                const monto = p.monto_registrado != null ? `$${Number(p.monto_registrado).toFixed(2)}` : '';
+                await auditLog.register({
+                    ...base,
+                    actionType: 'PAGO_REMOVE',
+                    summary: `${userData.name || userData.email} quitó pago de ${entityNameStr} — ${fecha} ${monto}`,
+                    oldValue: { fecha, tipo: p.tipo, monto: p.monto_registrado != null ? Number(p.monto_registrado).toFixed(2) : '0.00' },
+                    newValue: null
+                });
+            }
         }
     }
 
@@ -513,7 +515,7 @@ const saveStudentAsistencias = async (person, userData = {}) => {
             userName: userData.name || userData.email,
             userRole: userData.role,
             campus: alumno.campus || userData.campus || null,
-            summary: `${userData.name || userData.email} registró asistencia de ${alumnoLabel} — ${person.fecha}`,
+            summary: `${userData.name || userData.email} registró asistencia de ${alumnoLabel} — ${formatFechaLegible(person.fecha)}`,
             oldValue: null,
             newValue: { alumno: alumnoLabel, clase: claseLabel, fecha: person.fecha }
         });
@@ -825,7 +827,7 @@ const removeStudentAsistencia = async (id_alumno, fecha, id_clase, userData = {}
             userName: userData.name || userData.email,
             userRole: userData.role,
             campus: alumno.campus || userData.campus || null,
-            summary: `${userData.name || userData.email} eliminó asistencia de ${alumnoLabel} — ${fecha}`,
+            summary: `${userData.name || userData.email} eliminó asistencia de ${alumnoLabel} — ${formatFechaLegible(fecha)}`,
             oldValue: { alumno: alumnoLabel, clase: claseLabel, fecha },
             newValue: null
         });

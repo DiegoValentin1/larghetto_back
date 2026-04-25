@@ -80,10 +80,18 @@ const save = async(instrumento)=>{
     return {...instrumento, id:insertedId}
 }
 
+const formatFechaLegible = (fechaStr) => {
+    if (!fechaStr) return fechaStr;
+    const [y, m, d] = String(fechaStr).split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
+};
+
 const saveRepo = async(instrumento, userData = {})=>{
 
     const sql = `INSERT INTO alumno_repo(fecha, alumno_id, maestro_id, hora, instrumento, fecha_original) VALUES(?,?,?,?,?,?)`;
-    const {insertedId} = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id, instrumento.hora || null, instrumento.instrumento || null, instrumento.fecha_original || null]);
+    const result = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id, instrumento.hora || null, instrumento.instrumento || null, instrumento.fecha_original || null]);
+    const insertedId = result.insertId;
 
     if (userData && userData.id) {
         const [alumnoRows] = await Promise.all([
@@ -96,6 +104,13 @@ const saveRepo = async(instrumento, userData = {})=>{
         const alumnoLabel = alumno.name && alumno.matricula
             ? `${alumno.name} (${alumno.matricula})`
             : `ID: ${instrumento.alumno_id}`;
+
+        const fechaRepo     = formatFechaLegible(instrumento.fecha);
+        const fechaOriginal = instrumento.fecha_original ? formatFechaLegible(instrumento.fecha_original) : null;
+        const summaryFechas = fechaOriginal
+            ? `clase del ${fechaOriginal} → repone el ${fechaRepo}`
+            : `repone el ${fechaRepo}`;
+
         await auditLog.register({
             entityType: 'REPOSICION',
             entityId: insertedId,
@@ -105,7 +120,7 @@ const saveRepo = async(instrumento, userData = {})=>{
             userName: userData.name || userData.email,
             userRole: userData.role,
             campus: alumno.campus || userData.campus || null,
-            summary: `${userData.name || userData.email} registró reposición de ${alumnoLabel} — ${instrumento.fecha}${instrumento.fecha_original ? ` (clase del ${instrumento.fecha_original})` : ''}`,
+            summary: `${userData.name || userData.email} registró reposición de ${alumnoLabel} — ${summaryFechas}`,
             oldValue: null,
             newValue: { alumno: alumnoLabel, fecha: instrumento.fecha, fecha_original: instrumento.fecha_original || null, hora: instrumento.hora || null, instrumento: instrumento.instrumento || null }
         });
