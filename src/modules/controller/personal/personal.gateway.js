@@ -505,10 +505,10 @@ const saveStudentAsistencias = async (person, userData = {}) => {
             ? `${clase.instrumento} — ${clase.dia} ${clase.hora} con ${clase.maestro_name}`
             : `Clase #${person.id_clase}`;
         await auditLog.register({
-            entityType: 'ALUMNO',
+            entityType: 'ASISTENCIA',
             entityId: person.id_alumno,
             entityName: alumnoLabel,
-            actionType: 'ASISTENCIA',
+            actionType: 'CREATE',
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,
@@ -521,6 +521,8 @@ const saveStudentAsistencias = async (person, userData = {}) => {
 
     return { ...person }
 };
+
+
 
 const saveTeacher = async (person, userData = {}) => {
     console.log(person);
@@ -689,11 +691,46 @@ const removeEmpleado = async (id, userData = {}) => {
     return { idDeleted: id, idPersonal: idPersonal };
 }
 
-const removeRepo = async (id) => {
+const removeRepo = async (id, userData = {}) => {
     if (Number.isNaN(id)) throw Error("Wrong Type");
     if (!id) throw Error('Missing Fields');
+
+    let snapshot = null;
+    if (userData && userData.id) {
+        const rows = await query(
+            `SELECT ar.id, ar.fecha, ar.alumno_id, ar.maestro_id, ar.hora, ar.instrumento, ar.fecha_original,
+                    pe.name AS alumno_name, al.matricula, us.campus
+             FROM alumno_repo ar
+             JOIN users us ON us.id = ar.alumno_id
+             JOIN personal pe ON pe.id = us.personal_id
+             JOIN alumno al ON al.user_id = us.id
+             WHERE ar.id = ? LIMIT 1`,
+            [id]
+        );
+        snapshot = rows[0] || null;
+    }
+
     const sql = `DELETE FROM alumno_repo WHERE id=?`;
     await query(sql, [id]);
+
+    if (userData && userData.id && snapshot) {
+        const alumnoLabel = snapshot.alumno_name && snapshot.matricula
+            ? `${snapshot.alumno_name} (${snapshot.matricula})`
+            : `ID: ${snapshot.alumno_id}`;
+        await auditLog.register({
+            entityType: 'REPOSICION',
+            entityId: id,
+            entityName: alumnoLabel,
+            actionType: 'DELETE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: snapshot.campus || userData.campus || null,
+            summary: `${userData.name || userData.email} eliminó reposición de ${alumnoLabel} — ${snapshot.fecha}`,
+            oldValue: { alumno: alumnoLabel, fecha: snapshot.fecha, fecha_original: snapshot.fecha_original || null, hora: snapshot.hora || null, instrumento: snapshot.instrumento || null },
+            newValue: null
+        });
+    }
 
     return { idDeleted: id };
 }
@@ -780,10 +817,10 @@ const removeStudentAsistencia = async (id_alumno, fecha, id_clase, userData = {}
             ? `${clase.instrumento} — ${clase.dia} ${clase.hora} con ${clase.maestro_name}`
             : `Clase #${id_clase}`;
         await auditLog.register({
-            entityType: 'ALUMNO',
+            entityType: 'ASISTENCIA',
             entityId: parseInt(id_alumno),
             entityName: alumnoLabel,
-            actionType: 'ASISTENCIA',
+            actionType: 'DELETE',
             userId: userData.id,
             userName: userData.name || userData.email,
             userRole: userData.role,

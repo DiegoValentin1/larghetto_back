@@ -359,7 +359,7 @@ const actualizeTeacher = async (req, res = Response) => {
        const{id} =req.params;
        const {empleado} = req.body;
        await insertLog({empleado, accion:'Eliminó Reposición'});
-       const person = await removeRepo(id);
+       const person = await removeRepo(id, req.token);
        res.status(200).json(person);
     } catch (error) {
        console.log(error);
@@ -553,12 +553,12 @@ personalRouter.get('/clases/:id', getAllStudentClases);
 personalRouter.get('/matricula/check/:matricula', matriculaExists);
 personalRouter.get('/recepcionista/', getAllRecepcionista);
 personalRouter.get('/encargado/', getAllEncargado);
-personalRouter.post('/alumno/asistencias', insertStudentAsistencias);
+personalRouter.post('/alumno/asistencias', [auth], insertStudentAsistencias);
 personalRouter.post('/alumno/', insertStudent);
 personalRouter.post('/user/', insertUser);
 personalRouter.post('/teacher/', insertTeacher);
-personalRouter.put('/alumno', actualizeStudent);
-personalRouter.put('/alumno/asistencias', insertStudentAsistencias);
+personalRouter.put('/alumno', [auth], actualizeStudent);
+personalRouter.put('/alumno/asistencias', [auth], insertStudentAsistencias);
 personalRouter.put('/teacher', actualizeTeacher);
 personalRouter.put('/teacher/stats', actualizeTeacherStats);
 personalRouter.put('/user', actualizeUser);
@@ -567,10 +567,10 @@ personalRouter.put('/user', actualizeUser);
 // personalRouter.put('/', actualize);
 personalRouter.delete('/:id',eliminate);
 personalRouter.delete('/empleado/:id',eliminateEmpleado);
-personalRouter.delete('/repo/:id',eliminateRepo);
+personalRouter.delete('/repo/:id', [auth], eliminateRepo);
 personalRouter.delete('/alumno/:uid/:pid',eliminateStudentPermanente);
 personalRouter.put('/alumno/eliminar',[auth, checkRoles(['SUPER', 'ENCARGADO', 'RECEPCION'])],eliminateStudent);
-personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase',eliminateStudentAsistencias);
+personalRouter.delete('/alumno/asistencias/:id_alumno/:fecha/:id_clase', [auth], eliminateStudentAsistencias);
 
 // Rutas de solicitudes de baja
 personalRouter.post('/alumno/solicitar-baja', [auth, checkRoles(['RECEPCION', 'ENCARGADO'])], solicitarBajaAlumno);

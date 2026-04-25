@@ -1,4 +1,5 @@
 const {query} = require('../../../utils/mysql');
+const auditLog = require('../../../utils/auditLog');
 
 const findAllInstrumento = async()=>{
     const sql = `SELECT * FROM instrumento`;
@@ -79,10 +80,36 @@ const save = async(instrumento)=>{
     return {...instrumento, id:insertedId}
 }
 
-const saveRepo = async(instrumento)=>{
+const saveRepo = async(instrumento, userData = {})=>{
 
     const sql = `INSERT INTO alumno_repo(fecha, alumno_id, maestro_id, hora, instrumento, fecha_original) VALUES(?,?,?,?,?,?)`;
     const {insertedId} = await query(sql, [instrumento.fecha, instrumento.alumno_id, instrumento.maestro_id, instrumento.hora || null, instrumento.instrumento || null, instrumento.fecha_original || null]);
+
+    if (userData && userData.id) {
+        const [alumnoRows] = await Promise.all([
+            query(
+                `SELECT pe.name, al.matricula, us.campus FROM users us JOIN personal pe ON pe.id = us.personal_id JOIN alumno al ON al.user_id = us.id WHERE us.id = ? LIMIT 1`,
+                [instrumento.alumno_id]
+            )
+        ]);
+        const alumno = alumnoRows[0] || {};
+        const alumnoLabel = alumno.name && alumno.matricula
+            ? `${alumno.name} (${alumno.matricula})`
+            : `ID: ${instrumento.alumno_id}`;
+        await auditLog.register({
+            entityType: 'REPOSICION',
+            entityId: insertedId,
+            entityName: alumnoLabel,
+            actionType: 'CREATE',
+            userId: userData.id,
+            userName: userData.name || userData.email,
+            userRole: userData.role,
+            campus: alumno.campus || userData.campus || null,
+            summary: `${userData.name || userData.email} registró reposición de ${alumnoLabel} — ${instrumento.fecha}${instrumento.fecha_original ? ` (clase del ${instrumento.fecha_original})` : ''}`,
+            oldValue: null,
+            newValue: { alumno: alumnoLabel, fecha: instrumento.fecha, fecha_original: instrumento.fecha_original || null, hora: instrumento.hora || null, instrumento: instrumento.instrumento || null }
+        });
+    }
 
     return {...instrumento, id:insertedId}
 }

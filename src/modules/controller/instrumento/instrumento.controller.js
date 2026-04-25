@@ -116,7 +116,7 @@ const insertRepo = async(req, res=Response)=>{
     try {
         const {fecha, alumno_id, maestro_id, empleado, hora, instrumento, fecha_original} = req.body;
         await insertLog({empleado, accion:'Reposición añadida'});
-        const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id, hora, instrumento, fecha_original});
+        const instrumentoObj = await saveRepo({fecha, alumno_id, maestro_id, hora, instrumento, fecha_original}, req.token);
         res.status(200).json(instrumentoObj);
     } catch (error) {
         console.log(error);
@@ -190,7 +190,7 @@ instrumentoRouter.get('/logs/paginados', [auth], getLogsPaginados);
 instrumentoRouter.get('/logs/rango', [auth], getLogsRangoFechas);
 instrumentoRouter.get('/:id', getById);
 instrumentoRouter.post('/', insert);
-instrumentoRouter.post('/repo', insertRepo);
+instrumentoRouter.post('/repo', [auth], insertRepo);
 instrumentoRouter.put('/', actualize);
 instrumentoRouter.delete('/:id',eliminate);
 instrumentoRouter.get('/clases/total/:campus', getAlumnoClasesCampus);
