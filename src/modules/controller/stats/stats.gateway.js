@@ -96,57 +96,13 @@ JOIN users us ON us.id = alu.user_id
 JOIN promocion pro ON pro.id = alu.promocion_id
     WHERE alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
 
-    const sql2 = `SELECT
-   SUM(
-       CASE tipo
-           WHEN 1 THEN mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)
-           WHEN 2 THEN (mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)) * 0.95
-           WHEN 3 THEN (mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)) * 1.10
-           ELSE mensualidad
-       END
-   ) AS total_pagado
-FROM
-   alumno_pagos alp
-JOIN alumno alu ON alu.user_id = alp.alumno_id
-JOIN users us ON us.id = alu.user_id
-JOIN promocion pro on pro.id=alu.promocion_id
-WHERE
-   fecha = DATE_FORMAT(curdate(), '%Y-%m-01')`;
+    const sql2 = `SELECT COALESCE(SUM(alp.monto_registrado), 0) AS total_pagado
+FROM alumno_pagos alp
+WHERE alp.fecha = DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
 
     const response1 = await query(sql, []);
     const response2 = await query(sql2, []);
-    const total_mensualidad = response1[0].faltas + response2[0].total_pagado;
-    console.log(response1 , response2)
+    const total_mensualidad = Number(response1[0].faltas || 0) + Number(response2[0].total_pagado || 0);
     return [{  total_mensualidad }];
 }
 //Eta nueva función va a sumar los pagos faltantes con los pagos obtenidos, asi dando el total mensualidades :) Por campus
@@ -167,58 +123,15 @@ FROM alumno alu
 JOIN users us ON us.id = alu.user_id
 JOIN promocion pro ON pro.id = alu.promocion_id
     WHERE us.campus=? AND alu.proximo_pago <= CURDATE() AND alu.estado!=0;`;
-    const sql2 = `SELECT
-   SUM(
-       CASE tipo
-           WHEN 1 THEN mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)
-           WHEN 2 THEN (mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)) * 0.95
-           WHEN 3 THEN (mensualidad - (alu.mensualidad * (
-               CASE
-                   WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                       THEN pro.descuento
-                   WHEN alu.fecha_inicio_promo IS NULL
-                       THEN 0
-                   WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                       THEN 0
-                   ELSE pro.descuento
-               END
-           )/100)) * 1.10
-           ELSE mensualidad
-       END
-   ) AS total_pagado
-FROM
-   alumno_pagos alp
-JOIN alumno alu ON alu.user_id = alp.alumno_id
-JOIN users us ON us.id = alu.user_id
-JOIN promocion pro on pro.id=alu.promocion_id
-WHERE
-   fecha = DATE_FORMAT(curdate(), '%Y-%m-01')
-   AND campus =?`;
+    const sql2 = `SELECT COALESCE(SUM(alp.monto_registrado), 0) AS total_pagado
+FROM alumno_pagos alp
+JOIN users us ON us.id = alp.alumno_id
+WHERE alp.fecha = DATE_FORMAT(CURDATE(), '%Y-%m-01')
+  AND us.campus = ?`;
 
     const response1 = await query(sql, [campus]);
     const response2 = await query(sql2, [campus]);
-    const total_mensualidad = response1[0].faltas + response2[0].total_pagado;
-    console.log(response1 , response2)
+    const total_mensualidad = Number(response1[0].faltas || 0) + Number(response2[0].total_pagado || 0);
     return [{  total_mensualidad }];
 }
 
@@ -289,104 +202,21 @@ const findAllAlumnoInscripcionesCampus = async (campus) => {
 }
 
 const findAlumnoPagosMes = async () => {
-    const sql = `SELECT
-    SUM(
-        CASE tipo
-            WHEN 1 THEN mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)
-            WHEN 2 THEN (mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)) * 0.95
-            WHEN 3 THEN (mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)) * 1.10
-            ELSE mensualidad
-        END
-    ) AS total_pagado
-FROM
-    alumno_pagos alp
-JOIN alumno alu ON alu.user_id = alp.alumno_id
-JOIN users us ON us.id = alu.user_id
-JOIN promocion pro on pro.id=alu.promocion_id
-WHERE
-    fecha = DATE_FORMAT(curdate(), '%Y-%m-01')`;
-    return await query(sql, []);
+    const sql = `SELECT COALESCE(SUM(alp.monto_registrado), 0) AS total_pagado
+FROM alumno_pagos alp
+WHERE alp.fecha = DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+    const rows = await query(sql, []);
+    return [{ total_pagado: Number(rows[0]?.total_pagado || 0) }];
 }
 
 const findAlumnoPagosMesCampus = async (campus) => {
-    const sql = `SELECT
-    SUM(
-        CASE tipo
-            WHEN 1 THEN mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)
-            WHEN 2 THEN (mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)) * 0.95
-            WHEN 3 THEN (mensualidad - (alu.mensualidad * (
-                CASE
-                    WHEN pro.duracion_meses IS NULL OR pro.duracion_meses = 0
-                        THEN pro.descuento
-                    WHEN alu.fecha_inicio_promo IS NULL
-                        THEN 0
-                    WHEN TIMESTAMPDIFF(MONTH, alu.fecha_inicio_promo, CURDATE()) >= pro.duracion_meses
-                        THEN 0
-                    ELSE pro.descuento
-                END
-            )/100)) * 1.10
-            ELSE mensualidad
-        END
-    ) AS total_pagado
-FROM
-    alumno_pagos alp
-JOIN alumno alu ON alu.user_id = alp.alumno_id
-JOIN users us ON us.id = alu.user_id
-JOIN promocion pro on pro.id=alu.promocion_id
-WHERE 
-    fecha = DATE_FORMAT(curdate(), '%Y-%m-01') 
-    AND campus =?`;
-    return await query(sql, [campus]);
+    const sql = `SELECT COALESCE(SUM(alp.monto_registrado), 0) AS total_pagado
+FROM alumno_pagos alp
+JOIN users us ON us.id = alp.alumno_id
+WHERE alp.fecha = DATE_FORMAT(CURDATE(), '%Y-%m-01')
+  AND us.campus = ?`;
+    const rows = await query(sql, [campus]);
+    return [{ total_pagado: Number(rows[0]?.total_pagado || 0) }];
 }
 
 

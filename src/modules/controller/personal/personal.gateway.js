@@ -373,6 +373,9 @@ const updateStudent = async (person, userData = {}) => {
                 let monto_registrado = mensualidad_real;
                 if (element.tipo === 2) monto_registrado = mensualidad_real * (1 - DESCUENTO_PORCENTAJE); // Descuento 5%
                 if (element.tipo === 3) monto_registrado = mensualidad_real * (1 + RECARGO_PORCENTAJE); // Recargo 10%
+                if (element.tipo === 4) monto_registrado = mensualidad_real * 0.25; // Equivalencia 25%
+                if (element.tipo === 5) monto_registrado = mensualidad_real * 0.50; // Equivalencia 50%
+                if (element.tipo === 6) monto_registrado = mensualidad_real * 0.75; // Equivalencia 75%
                 await connQuery(`INSERT INTO alumno_pagos (alumno_id, fecha, tipo, monto_registrado) values(?,?,?,?)`,
                     [person.user_id, element.fecha, element.tipo, monto_registrado]);
                 newPagosConMonto.push({ fecha: element.fecha, tipo: element.tipo, monto_registrado });
