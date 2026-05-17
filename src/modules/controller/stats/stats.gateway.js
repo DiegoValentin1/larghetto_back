@@ -351,7 +351,7 @@ const findRecargosEsperadosCampus = async (campus) => {
         FROM alumno al
         JOIN users u ON al.user_id = u.id
         WHERE ${isTotal ? '1=1' : 'u.campus = ?'}
-          AND al.estado = 1
+          AND al.estado != 0
           AND al.user_id NOT IN (
               SELECT alumno_id FROM alumno_pagos
               WHERE MONTH(fecha) = MONTH(CURDATE())
